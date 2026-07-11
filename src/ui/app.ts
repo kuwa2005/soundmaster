@@ -24,7 +24,7 @@ export function renderApp(container: HTMLElement) {
         </div>
         <div class="flex items-center gap-4">
           <button id="lang-toggle" class="px-2 py-1 rounded text-xs font-medium" style="background: var(--color-daw-panel); color: var(--color-daw-text); border: 1px solid var(--color-daw-border);">
-            ${getLocale() === 'ja' ? 'EN' : 'JA'}
+            ${getLocale() === 'ja' ? 'JA' : 'EN'}
           </button>
           <button id="theme-toggle" class="p-2 rounded-lg transition-all hover:scale-110" style="background: var(--color-daw-panel);" title="Toggle theme">
             <span id="theme-icon" class="text-xl"></span>
