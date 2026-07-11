@@ -9,7 +9,10 @@ import { renderExportPanel } from './export-panel'
 import { renderWaveform } from './waveform'
 import { t, initI18n, getLocale, setLocale, Locale } from '../i18n'
 
+let appContainer: HTMLElement | null = null
+
 export function renderApp(container: HTMLElement) {
+  appContainer = container
   initI18n()
 
   container.innerHTML = `
@@ -68,28 +71,52 @@ export function renderApp(container: HTMLElement) {
   `
 
   initDropzone()
+  initLangToggle()
   renderSubComponents()
   updateThemeIcon()
 
-  // 言語切替ボタン
-  document.getElementById('lang-toggle')!.addEventListener('click', () => {
-    const newLocale: Locale = getLocale() === 'ja' ? 'en' : 'ja'
-    setLocale(newLocale)
-    renderApp(container)
-  })
-
   subscribe(() => {
-    // 再生中はコントロール以外を更新（オーディオチェーンを壊さないため）
     if (!state.isPlaying) {
       renderSubComponents()
     } else {
-      // 再生中は最小限の更新のみ
       renderTrackList(document.getElementById('track-list')!)
       renderTransport(document.getElementById('transport-area')!)
       renderExportPanel(document.getElementById('export-area')!)
     }
     updateThemeIcon()
   })
+}
+
+function initLangToggle() {
+  document.getElementById('lang-toggle')?.addEventListener('click', () => {
+    const newLocale: Locale = getLocale() === 'ja' ? 'en' : 'ja'
+    setLocale(newLocale)
+    // 全コンポーネントを再描画
+    updateAllText()
+  })
+}
+
+function updateAllText() {
+  if (!appContainer) return
+
+  // ヘッダーのテキスト更新
+  const titleEl = appContainer.querySelector('h1')
+  const subtitleEl = appContainer.querySelector('.hidden.sm\\:inline')
+  const langBtn = document.getElementById('lang-toggle')
+
+  if (titleEl) titleEl.textContent = t('app.title')
+  if (subtitleEl) subtitleEl.textContent = t('app.subtitle')
+  if (langBtn) langBtn.textContent = getLocale() === 'ja' ? 'JA' : 'EN'
+
+  // ドロップゾーンのテキスト更新
+  const dropLabel = appContainer.querySelector('#dropzone-content p')
+  const dropFormats = appContainer.querySelector('#dropzone-content .text-sm')
+  if (dropLabel) dropLabel.textContent = t('dropzone.label')
+  if (dropFormats) dropFormats.textContent = t('dropzone.formats')
+
+  // サブコンポーネントを再描画
+  renderSubComponents()
+  updateThemeIcon()
 }
 
 function renderSubComponents() {
