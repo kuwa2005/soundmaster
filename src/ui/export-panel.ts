@@ -1,9 +1,10 @@
-import { state, getActiveTrack, subscribe } from '../state'
+import { state, getActiveTrack } from '../state'
 import { exportWav, exportAllAsZip } from '../audio/exporter'
 import { t } from '../i18n'
 
 let pendingDownload: 'one' | 'all' | null = null
 let dialogElement: HTMLDivElement | null = null
+let progressInterval: ReturnType<typeof setInterval> | null = null
 
 export function renderExportPanel(container: HTMLElement) {
   const track = getActiveTrack()
@@ -103,20 +104,27 @@ function showRenderingDialog() {
       </p>
       <div style="
         width: 100%;
-        height: 4px;
+        height: 8px;
         background: var(--color-daw-panel);
-        border-radius: 2px;
+        border-radius: 4px;
         overflow: hidden;
-        margin-bottom: 16px;
+        margin-bottom: 8px;
       ">
-        <div id="rendering-progress" style="
-          width: 100%;
+        <div id="rendering-progress-bar" style="
+          width: 0%;
           height: 100%;
           background: linear-gradient(90deg, var(--color-daw-accent), #8b5cf6);
-          animation: rendering-pulse 1.5s ease-in-out infinite;
-          border-radius: 2px;
+          border-radius: 4px;
+          transition: width 0.3s ease;
         "></div>
       </div>
+      <div id="rendering-percent" style="
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--color-daw-accent);
+        margin-bottom: 16px;
+        font-family: monospace;
+      ">0%</div>
       <button id="dialog-cancel" style="
         background: var(--color-daw-panel);
         border: 1px solid var(--color-daw-border);
@@ -131,32 +139,33 @@ function showRenderingDialog() {
     </div>
   `
 
-  const style = document.createElement('style')
-  style.textContent = `
-    @keyframes rendering-pulse {
-      0%, 100% { opacity: 1; transform: translateX(-100%); }
-      50% { opacity: 0.7; }
-    }
-    #rendering-progress {
-      animation: rendering-slide 1.5s ease-in-out infinite;
-    }
-    @keyframes rendering-slide {
-      0% { transform: translateX(-100%); }
-      100% { transform: translateX(100%); }
-    }
-  `
-  document.head.appendChild(style)
-
   document.body.appendChild(dialogElement)
 
   document.getElementById('dialog-cancel')!.addEventListener('click', () => {
     hideRenderingDialog()
   })
 
+  // 進捗を定期的に更新
+  progressInterval = setInterval(updateProgressDisplay, 100)
   checkRenderingStatus()
 }
 
+function updateProgressDisplay() {
+  const progressBar = document.getElementById('rendering-progress-bar')
+  const percentText = document.getElementById('rendering-percent')
+
+  if (progressBar && percentText) {
+    const progress = state.renderProgress
+    progressBar.style.width = `${progress}%`
+    percentText.textContent = `${progress}%`
+  }
+}
+
 function hideRenderingDialog() {
+  if (progressInterval) {
+    clearInterval(progressInterval)
+    progressInterval = null
+  }
   if (dialogElement) {
     dialogElement.remove()
     dialogElement = null
@@ -171,13 +180,11 @@ function checkRenderingStatus() {
   const hasBuffer = track?.masteredBuffer !== null && track?.masteredBuffer !== undefined
   const isDone = track?.status === 'done'
 
-  // バッファが存在し、かつレンダリングが完了している場合のみダウンロード
   if (hasBuffer && isDone && pendingDownload) {
     const type = pendingDownload
     hideRenderingDialog()
     executeDownload(type)
   } else if (!dialogElement) {
-    // ダイアログが閉じられた場合は終了
     return
   } else {
     setTimeout(checkRenderingStatus, 100)

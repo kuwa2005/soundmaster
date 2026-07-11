@@ -23,6 +23,7 @@ export interface AppState {
   lowGenAmount: number
   highGenAmount: number
   outputSampleRate: OutputSampleRate
+  renderProgress: number // 0-100
 }
 
 type StateListener = (state: AppState) => void
@@ -41,6 +42,7 @@ export const state: AppState = {
   lowGenAmount: 0.2,
   highGenAmount: 0.2,
   outputSampleRate: 96000,
+  renderProgress: 0,
 }
 
 export function subscribe(listener: StateListener) {
@@ -124,6 +126,10 @@ export function setHighGenAmount(amount: number) {
 
 export function setOutputSampleRate(rate: OutputSampleRate) {
   state.outputSampleRate = rate
+}
+
+export function setRenderProgress(progress: number) {
+  state.renderProgress = progress
 }
 
 export function getActiveTrack(): Track | undefined {

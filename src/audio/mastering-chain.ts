@@ -1,4 +1,4 @@
-import { state, getActiveTrack, notify } from '../state'
+import { state, getActiveTrack, notify, setRenderProgress } from '../state'
 import { getAudioContext } from './decoder'
 
 interface StyleParams {
@@ -158,18 +158,20 @@ export async function rebuildMasteringChain() {
   const track = getActiveTrack()
   if (!track?.originalBuffer) return
 
-  // 新しいレンダリング開始時にカウンターをインクリメント
   const thisVersion = ++renderVersion
 
   track.status = 'mastering'
+  setRenderProgress(0)
   notify()
 
   try {
     const buffer = track.originalBuffer
     const targetSampleRate = state.outputSampleRate
+    setRenderProgress(10)
 
     const oversampleRate = targetSampleRate > buffer.sampleRate ? 2 : 1
     const renderSampleRate = buffer.sampleRate * oversampleRate
+    setRenderProgress(20)
 
     const offlineCtx = new OfflineAudioContext(
       buffer.numberOfChannels,
@@ -184,29 +186,47 @@ export async function rebuildMasteringChain() {
     source.connect(chain.input)
     chain.output.connect(offlineCtx.destination)
     source.start(0)
+    setRenderProgress(30)
+
+    // 進捗シミュレーション（Rendering中はリアルタイムで更新）
+    const progressInterval = simulateRenderProgress()
 
     let rendered = await offlineCtx.startRendering()
 
-    // 古いレンダリング結果は無視
+    clearInterval(progressInterval)
+
     if (thisVersion !== renderVersion) return
+    setRenderProgress(70)
 
     if (renderSampleRate !== targetSampleRate) {
       rendered = await downsampleBuffer(rendered, targetSampleRate)
     }
 
-    // ダウンサンプル後にもう一度チェック
     if (thisVersion !== renderVersion) return
+    setRenderProgress(95)
 
     track.masteredBuffer = rendered
     track.status = 'done'
+    setRenderProgress(100)
     notify()
   } catch (e) {
     console.error('Mastering failed:', e)
+    setRenderProgress(0)
     if (thisVersion === renderVersion) {
       track.status = 'error'
       notify()
     }
   }
+}
+
+function simulateRenderProgress(): ReturnType<typeof setInterval> {
+  let progress = 30
+  return setInterval(() => {
+    if (progress < 65) {
+      progress += Math.random() * 3 + 1
+      setRenderProgress(Math.min(65, Math.round(progress)))
+    }
+  }, 200)
 }
 
 async function downsampleBuffer(buffer: AudioBuffer, targetSampleRate: number): Promise<AudioBuffer> {
