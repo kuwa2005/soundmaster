@@ -8,7 +8,6 @@ export function renderTrackList(container: HTMLElement) {
       <div id="track-dropzone-empty" class="p-6 text-center h-full flex flex-col items-center justify-center cursor-pointer" style="color: var(--color-daw-muted); border: 2px dashed var(--color-daw-border); border-radius: 8px; margin: 8px;">
         <span class="text-4xl block mb-3 opacity-30">🎵</span>
         <p class="text-sm">${t('tracks.empty')}</p>
-        <p class="text-xs mt-1 opacity-50">${t('tracks.dropHint')}</p>
         <input type="file" id="sidebar-file-input" multiple accept="audio/*,video/*" class="hidden" />
       </div>
     `

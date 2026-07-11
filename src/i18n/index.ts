@@ -9,7 +9,6 @@ export const translations: Record<Locale, Record<string, string>> = {
     // Track List
     'tracks.title': 'TRACKS',
     'tracks.empty': 'ファイルをドロップしてください',
-    'tracks.dropHint': 'または下のドロップゾーン',
     'tracks.addHint': '+ ここにファイルドロップで追加',
 
     // Controls
@@ -83,7 +82,6 @@ export const translations: Record<Locale, Record<string, string>> = {
     // Track List
     'tracks.title': 'TRACKS',
     'tracks.empty': 'Drop files here',
-    'tracks.dropHint': 'or use the dropzone below',
     'tracks.addHint': '+ Drop files here to add',
 
     // Controls
