@@ -19,6 +19,7 @@ const sampleRates: { value: OutputSampleRate; label: string; descKey: string; is
   { value: 48000, label: '48kHz', descKey: 'samplerate.video', isHiRes: false },
   { value: 88200, label: '88.2kHz', descKey: 'samplerate.hires', isHiRes: true },
   { value: 96000, label: '96kHz', descKey: 'samplerate.hires', isHiRes: true },
+  { value: 192000, label: '192kHz', descKey: 'samplerate.hires', isHiRes: true },
 ]
 
 const SLIDER_MAX = 300

@@ -9,7 +9,7 @@ export interface Track {
   fileName: string
 }
 
-export type OutputSampleRate = 44100 | 48000 | 88200 | 96000
+export type OutputSampleRate = 44100 | 48000 | 88200 | 96000 | 192000
 
 export interface AppState {
   tracks: Track[]
