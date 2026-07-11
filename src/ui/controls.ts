@@ -19,6 +19,8 @@ const styleDefaults: Record<string, { lowGen: number; highGen: number }> = {
   openness: { lowGen: 0.1, highGen: 0.4 },
 }
 
+const SLIDER_MAX = 150
+
 function handleStyleChange(value: typeof state.style) {
   setStyle(value)
   const defaults = styleDefaults[value]
@@ -26,10 +28,8 @@ function handleStyleChange(value: typeof state.style) {
   setHighGenAmount(defaults.highGen)
 
   if (state.isPlaying) {
-    // 再生中はリアルタイム更新
     updateLiveChainParams()
   } else {
-    // 停止中はオフラインレンダリング
     rebuildMasteringChain()
   }
 }
@@ -61,6 +61,8 @@ function handleGenChange(type: 'low' | 'high', value: number) {
 export function renderControls(container: HTMLElement) {
   const lowGen = state.lowGenAmount
   const highGen = state.highGenAmount
+  const lowGenPercent = Math.round(lowGen * 100)
+  const highGenPercent = Math.round(highGen * 100)
 
   container.innerHTML = `
     <div class="flex gap-6 items-start">
@@ -113,15 +115,15 @@ export function renderControls(container: HTMLElement) {
           <h3 class="text-xs font-semibold uppercase tracking-wider" style="color: var(--color-daw-muted);">
             <span style="color: #f97316;">●</span> LOW GENERATOR
           </h3>
-          <span id="low-gen-value" class="text-xs font-mono" style="color: #f97316;">${Math.round(lowGen * 100)}%</span>
+          <span id="low-gen-value" class="text-xs font-mono" style="color: ${lowGenPercent > 100 ? '#ef4444' : '#f97316'};">${lowGenPercent}%${lowGenPercent > 100 ? ' ⚠' : ''}</span>
         </div>
-        <input type="range" id="low-gen-slider" min="0" max="100" value="${Math.round(lowGen * 100)}" 
+        <input type="range" id="low-gen-slider" min="0" max="${SLIDER_MAX}" value="${lowGenPercent}" 
           class="w-full h-2 rounded-lg appearance-none cursor-pointer"
-          style="background: linear-gradient(to right, #f97316 ${lowGen * 100}%, var(--color-daw-panel) ${lowGen * 100}%);">
+          style="background: linear-gradient(to right, ${lowGenPercent > 100 ? '#ef4444' : '#f97316'} ${Math.min(lowGenPercent / SLIDER_MAX * 100, 100)}%, var(--color-daw-panel) ${Math.min(lowGenPercent / SLIDER_MAX * 100, 100)}%);">
         <div class="flex justify-between text-xs mt-1" style="color: var(--color-daw-muted);">
           <span>OFF</span>
           <span>低音のハーモニック追加</span>
-          <span>MAX</span>
+          <span>150%</span>
         </div>
       </div>
 
@@ -130,15 +132,15 @@ export function renderControls(container: HTMLElement) {
           <h3 class="text-xs font-semibold uppercase tracking-wider" style="color: var(--color-daw-muted);">
             <span style="color: #8b5cf6;">●</span> HIGH GENERATOR
           </h3>
-          <span id="high-gen-value" class="text-xs font-mono" style="color: #8b5cf6;">${Math.round(highGen * 100)}%</span>
+          <span id="high-gen-value" class="text-xs font-mono" style="color: ${highGenPercent > 100 ? '#ef4444' : '#8b5cf6'};">${highGenPercent}%${highGenPercent > 100 ? ' ⚠' : ''}</span>
         </div>
-        <input type="range" id="high-gen-slider" min="0" max="100" value="${Math.round(highGen * 100)}" 
+        <input type="range" id="high-gen-slider" min="0" max="${SLIDER_MAX}" value="${highGenPercent}" 
           class="w-full h-2 rounded-lg appearance-none cursor-pointer"
-          style="background: linear-gradient(to right, #8b5cf6 ${highGen * 100}%, var(--color-daw-panel) ${highGen * 100}%);">
+          style="background: linear-gradient(to right, ${highGenPercent > 100 ? '#ef4444' : '#8b5cf6'} ${Math.min(highGenPercent / SLIDER_MAX * 100, 100)}%, var(--color-daw-panel) ${Math.min(highGenPercent / SLIDER_MAX * 100, 100)}%);">
         <div class="flex justify-between text-xs mt-1" style="color: var(--color-daw-muted);">
           <span>OFF</span>
           <span>高音のハーモニック追加</span>
-          <span>MAX</span>
+          <span>150%</span>
         </div>
       </div>
     </div>
@@ -166,8 +168,11 @@ export function renderControls(container: HTMLElement) {
   lowGenSlider?.addEventListener('input', (e) => {
     const val = parseInt((e.target as HTMLInputElement).value) / 100
     handleGenChange('low', val)
-    lowGenValue.textContent = `${Math.round(val * 100)}%`
-    lowGenSlider.style.background = `linear-gradient(to right, #f97316 ${val * 100}%, var(--color-daw-panel) ${val * 100}%)`
+    const percent = Math.round(val * 100)
+    lowGenValue.textContent = `${percent}%${percent > 100 ? ' ⚠' : ''}`
+    lowGenValue.style.color = percent > 100 ? '#ef4444' : '#f97316'
+    const fillPercent = Math.min(percent / SLIDER_MAX * 100, 100)
+    lowGenSlider.style.background = `linear-gradient(to right, ${percent > 100 ? '#ef4444' : '#f97316'} ${fillPercent}%, var(--color-daw-panel) ${fillPercent}%)`
   })
 
   // High Generator スライダー
@@ -176,7 +181,10 @@ export function renderControls(container: HTMLElement) {
   highGenSlider?.addEventListener('input', (e) => {
     const val = parseInt((e.target as HTMLInputElement).value) / 100
     handleGenChange('high', val)
-    highGenValue.textContent = `${Math.round(val * 100)}%`
-    highGenSlider.style.background = `linear-gradient(to right, #8b5cf6 ${val * 100}%, var(--color-daw-panel) ${val * 100}%)`
+    const percent = Math.round(val * 100)
+    highGenValue.textContent = `${percent}%${percent > 100 ? ' ⚠' : ''}`
+    highGenValue.style.color = percent > 100 ? '#ef4444' : '#8b5cf6'
+    const fillPercent = Math.min(percent / SLIDER_MAX * 100, 100)
+    highGenSlider.style.background = `linear-gradient(to right, ${percent > 100 ? '#ef4444' : '#8b5cf6'} ${fillPercent}%, var(--color-daw-panel) ${fillPercent}%)`
   })
 }

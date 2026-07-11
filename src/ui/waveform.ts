@@ -1,10 +1,12 @@
 import { state, getActiveTrack } from '../state'
+import { seekTo } from '../audio/playback'
 
 let canvas: HTMLCanvasElement | null = null
 let animationFrame: number | null = null
 let waveformData: Float32Array | null = null
 let canvasWidth = 0
 let canvasHeight = 0
+let isSeeking = false
 
 export function renderWaveform(container: HTMLElement) {
   const track = getActiveTrack()
@@ -13,6 +15,8 @@ export function renderWaveform(container: HTMLElement) {
     cancelAnimationFrame(animationFrame)
     animationFrame = null
   }
+
+  isSeeking = false
 
   if (!track?.originalBuffer) {
     container.innerHTML = `
@@ -24,12 +28,13 @@ export function renderWaveform(container: HTMLElement) {
   }
 
   container.innerHTML = `
-    <canvas id="waveform-canvas" class="w-full h-full"></canvas>
+    <canvas id="waveform-canvas" class="w-full h-full cursor-pointer"></canvas>
   `
 
   canvas = document.getElementById('waveform-canvas') as HTMLCanvasElement
   cacheWaveformData(track.originalBuffer)
   drawWaveform()
+  initSeekHandlers()
 
   const resizeObserver = new ResizeObserver(() => {
     if (canvas && track.originalBuffer) {
@@ -38,6 +43,60 @@ export function renderWaveform(container: HTMLElement) {
     }
   })
   resizeObserver.observe(container)
+}
+
+function initSeekHandlers() {
+  if (!canvas) return
+
+  // マウスダウン - シーク開始
+  canvas.addEventListener('mousedown', (e) => {
+    isSeeking = true
+    handleSeek(e)
+  })
+
+  // マウスムーブ - ドラッグ中
+  canvas.addEventListener('mousemove', (e) => {
+    if (!isSeeking) return
+    handleSeek(e)
+  })
+
+  // マウスアップ - シーク終了
+  document.addEventListener('mouseup', () => {
+    isSeeking = false
+  })
+
+  // タッチイベント（モバイル対応）
+  canvas.addEventListener('touchstart', (e) => {
+    isSeeking = true
+    handleSeekTouch(e)
+    e.preventDefault()
+  })
+
+  canvas.addEventListener('touchmove', (e) => {
+    if (!isSeeking) return
+    handleSeekTouch(e)
+    e.preventDefault()
+  })
+
+  canvas.addEventListener('touchend', () => {
+    isSeeking = false
+  })
+}
+
+function handleSeek(e: MouseEvent) {
+  if (!canvas) return
+  const rect = canvas.getBoundingClientRect()
+  const x = e.clientX - rect.left
+  const progress = Math.max(0, Math.min(1, x / canvasWidth))
+  seekTo(progress)
+}
+
+function handleSeekTouch(e: TouchEvent) {
+  if (!canvas || !e.touches[0]) return
+  const rect = canvas.getBoundingClientRect()
+  const x = e.touches[0].clientX - rect.left
+  const progress = Math.max(0, Math.min(1, x / canvasWidth))
+  seekTo(progress)
 }
 
 function cacheWaveformData(buffer: AudioBuffer) {
@@ -54,7 +113,6 @@ function cacheWaveformData(buffer: AudioBuffer) {
   const data = buffer.getChannelData(0)
   const width = canvasWidth
 
-  // Min/Maxペアをキャッシュ（間引き済み）
   waveformData = new Float32Array(width * 2)
   const step = Math.ceil(data.length / width)
 
@@ -130,7 +188,13 @@ function drawWaveform(progressX?: number) {
     // ゲージ先端のドット
     ctx.fillStyle = state.theme === 'dark' ? '#ef4444' : '#dc2626'
     ctx.beginPath()
-    ctx.arc(progressX, centerY, 4, 0, Math.PI * 2)
+    ctx.arc(progressX, centerY, 5, 0, Math.PI * 2)
+    ctx.fill()
+
+    // ドットのハイライト
+    ctx.fillStyle = state.theme === 'dark' ? '#fca5a5' : '#fca5a5'
+    ctx.beginPath()
+    ctx.arc(progressX, centerY, 2, 0, Math.PI * 2)
     ctx.fill()
   }
 }
@@ -148,4 +212,5 @@ export function clearWaveform() {
   }
   canvas = null
   waveformData = null
+  isSeeking = false
 }

@@ -165,6 +165,23 @@ export function getCurrentPlaybackTime(): number {
   return ctx.currentTime - startTime
 }
 
+export function seekTo(progress: number) {
+  const track = getActiveTrack()
+  if (!track?.originalBuffer) return
+
+  const seekTime = progress * track.originalBuffer.duration
+  startOffset = seekTime
+
+  if (state.isPlaying) {
+    // 再生中は即座に新しい位置から再生
+    playAudio(seekTime)
+  } else {
+    // 停止中はオフセットだけ更新して波形を再描画
+    updateWaveformProgress(progress)
+    updateTimeDisplay()
+  }
+}
+
 function updateTimeDisplay() {
   const display = document.getElementById('time-display')
   if (!display) return

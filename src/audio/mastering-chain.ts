@@ -216,11 +216,34 @@ function createDSPChain(ctx: OfflineAudioContext | AudioContext, style: string, 
 
   const lowGen = createLowGenerator(ctx, lowGenAmount, sampleRate)
   const lowGenMix = ctx.createGain()
-  lowGenMix.gain.value = lowGenAmount
+  lowGenMix.gain.value = Math.min(lowGenAmount, 1.0) // Cap at 1.0 for mix level
 
   const highGen = createHighGenerator(ctx, highGenAmount, sampleRate)
   const highGenMix = ctx.createGain()
-  highGenMix.gain.value = highGenAmount
+  highGenMix.gain.value = Math.min(highGenAmount, 1.0) // Cap at 1.0 for mix level
+
+  // Generator dynamics control - prevents harsh distortion at high amounts
+  const genCompressor = ctx.createDynamicsCompressor()
+  genCompressor.threshold.value = -12
+  genCompressor.ratio.value = 4
+  genCompressor.attack.value = 0.003
+  genCompressor.release.value = 0.1
+  genCompressor.knee.value = 6
+
+  // Soft limiter for generators - prevents hard clipping
+  const genLimiter = ctx.createDynamicsCompressor()
+  genLimiter.threshold.value = -3
+  genLimiter.ratio.value = 20
+  genLimiter.attack.value = 0.001
+  genLimiter.release.value = 0.05
+  genLimiter.knee.value = 0
+
+  // Auto-normalization gain for high generator amounts
+  const genNormGain = ctx.createGain()
+  // Calculate normalization: reduce gain when amount > 100%
+  const maxGenAmount = Math.max(lowGenAmount, highGenAmount)
+  const normFactor = maxGenAmount > 1.0 ? 1.0 / (1.0 + (maxGenAmount - 1.0) * 0.5) : 1.0
+  genNormGain.gain.value = normFactor
 
   const compressor = ctx.createDynamicsCompressor()
   compressor.threshold.value = sp.compThreshold
@@ -262,12 +285,17 @@ function createDSPChain(ctx: OfflineAudioContext | AudioContext, style: string, 
   // Low Generator parallel path
   input.connect(lowGen.input)
   lowGen.output.connect(lowGenMix)
-  lowGenMix.connect(eqHigh)
 
   // High Generator parallel path
   input.connect(highGen.input)
   highGen.output.connect(highGenMix)
-  highGenMix.connect(eqHigh)
+
+  // Combine generators through dynamics control to prevent harsh distortion
+  lowGenMix.connect(genCompressor)
+  highGenMix.connect(genCompressor)
+  genCompressor.connect(genLimiter)
+  genLimiter.connect(genNormGain)
+  genNormGain.connect(eqHigh)
 
   // To compressor and limiter
   eqHigh.connect(compressor)
