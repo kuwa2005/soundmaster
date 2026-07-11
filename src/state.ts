@@ -29,14 +29,14 @@ const listeners: StateListener[] = []
 export const state: AppState = {
   tracks: [],
   activeTrackId: null,
-  style: 'warmth',
+  style: 'balance',
   loudness: 'medium',
   isPlaying: false,
   isMastered: true,
   currentTime: 0,
   theme: 'light',
-  lowGenAmount: 0.4,
-  highGenAmount: 0.1,
+  lowGenAmount: 0.2,
+  highGenAmount: 0.2,
 }
 
 export function subscribe(listener: StateListener) {
