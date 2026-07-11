@@ -1,4 +1,4 @@
-import { addTrack, Track, notify, getActiveTrack } from '../state'
+import { addTrack, Track, notify, getActiveTrack, state } from '../state'
 import { rebuildMasteringChain } from './mastering-chain'
 
 let audioContext: AudioContext | null = null
@@ -13,7 +13,7 @@ export function getAudioContext(): AudioContext {
 export async function handleFileDrop(files: FileList) {
   const fileArray = Array.from(files)
 
-  // まず全てのトラックを即座にUIに追加
+  // 全てのトラックを即座にUIに追加
   const tracks: Track[] = fileArray.map(file => {
     const isVideo = file.type.startsWith('video/')
     const format = file.name.split('.').pop()?.toLowerCase() || 'unknown'
@@ -30,7 +30,7 @@ export async function handleFileDrop(files: FileList) {
     }
   })
 
-  // 全トラックを一括追加してUI更新
+  // 全トラックを一括追加
   for (const track of tracks) {
     addTrack(track)
   }
@@ -57,13 +57,14 @@ export async function handleFileDrop(files: FileList) {
     }
   })
 
-  // デコード完了を待つ
   await Promise.all(decodePromises)
 
-  // 最初のトラックをアクティブに設定
-  if (tracks.length > 0 && tracks[0].originalBuffer) {
-    // マスタリングを実行（非同期、ブロックしない）
-    rebuildMasteringChain()
+  // 全トラックを順番にマスタリング
+  for (const track of tracks) {
+    if (track.originalBuffer && track.status === 'ready') {
+      state.activeTrackId = track.id
+      await rebuildMasteringChain()
+    }
   }
 }
 
