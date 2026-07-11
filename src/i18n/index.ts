@@ -65,6 +65,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     'dropzone.label': '音声・動画ファイルをドロップ',
     'dropzone.formats': 'WAV, MP3, FLAC, OGG, AIFF, MP4, MOV, AVI',
 
+    // Waveform
+    'waveform.empty': 'ファイルを読み込んでください',
+
     // Status
     'status.loading': '読み込み中...',
     'status.ready': '準備完了',
@@ -135,6 +138,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     // Dropzone
     'dropzone.label': 'Drop audio/video files here',
     'dropzone.formats': 'WAV, MP3, FLAC, OGG, AIFF, MP4, MOV, AVI',
+
+    // Waveform
+    'waveform.empty': 'Please load a file',
 
     // Status
     'status.loading': 'Loading...',

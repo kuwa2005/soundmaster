@@ -1,5 +1,6 @@
 import { state, getActiveTrack } from '../state'
 import { seekTo } from '../audio/playback'
+import { t } from '../i18n'
 
 let canvas: HTMLCanvasElement | null = null
 let animationFrame: number | null = null
@@ -21,7 +22,7 @@ export function renderWaveform(container: HTMLElement) {
   if (!track?.originalBuffer) {
     container.innerHTML = `
       <div class="h-full flex items-center justify-center" style="color: var(--color-daw-muted);">
-        <p>ファイルを読み込んでください</p>
+        <p>${t('waveform.empty')}</p>
       </div>
     `
     return
