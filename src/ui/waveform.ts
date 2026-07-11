@@ -1,14 +1,19 @@
-import { state, getActiveTrack, subscribe } from '../state'
-import WaveSurfer from 'wavesurfer.js'
+import { state, getActiveTrack } from '../state'
 
-let wavesurfer: WaveSurfer | null = null
+let canvas: HTMLCanvasElement | null = null
+let animationFrame: number | null = null
 
 export function renderWaveform(container: HTMLElement) {
   const track = getActiveTrack()
 
-  if (!track) {
+  if (animationFrame) {
+    cancelAnimationFrame(animationFrame)
+    animationFrame = null
+  }
+
+  if (!track?.originalBuffer) {
     container.innerHTML = `
-      <div class="h-full flex items-center justify-center text-gray-400 dark:text-gray-500">
+      <div class="h-full flex items-center justify-center" style="color: var(--color-daw-muted);">
         <p>ファイルを読み込んでください</p>
       </div>
     `
@@ -16,74 +21,95 @@ export function renderWaveform(container: HTMLElement) {
   }
 
   container.innerHTML = `
-    <div id="waveform" class="h-full"></div>
+    <canvas id="waveform-canvas" class="w-full h-full"></canvas>
   `
 
-  if (wavesurfer) {
-    wavesurfer.destroy()
-  }
+  canvas = document.getElementById('waveform-canvas') as HTMLCanvasElement
+  drawWaveform(canvas, track.originalBuffer)
 
-  const waveformEl = document.getElementById('waveform')!
-  wavesurfer = WaveSurfer.create({
-    container: waveformEl,
-    waveColor: '#94a3b8',
-    progressColor: '#3b82f6',
-    cursorColor: '#ef4444',
-    height: 200,
-    normalize: true,
-  })
-
-  if (track.originalBuffer) {
-    wavesurfer.loadBlob(bufferToBlob(track.originalBuffer))
-  }
-}
-
-function bufferToBlob(buffer: AudioBuffer): Blob {
-  const numChannels = buffer.numberOfChannels
-  const sampleRate = buffer.sampleRate
-  const format = 1 // PCM
-  const bitDepth = 16
-
-  const bytesPerSample = bitDepth / 8
-  const blockAlign = numChannels * bytesPerSample
-  const dataSize = buffer.length * blockAlign
-  const headerSize = 44
-  const arrayBuffer = new ArrayBuffer(headerSize + dataSize)
-  const view = new DataView(arrayBuffer)
-
-  writeString(view, 0, 'RIFF')
-  view.setUint32(4, 36 + dataSize, true)
-  writeString(view, 8, 'WAVE')
-  writeString(view, 12, 'fmt ')
-  view.setUint32(16, 16, true)
-  view.setUint16(20, format, true)
-  view.setUint16(22, numChannels, true)
-  view.setUint32(24, sampleRate, true)
-  view.setUint32(28, sampleRate * blockAlign, true)
-  view.setUint16(32, blockAlign, true)
-  view.setUint16(34, bitDepth, true)
-  writeString(view, 36, 'data')
-  view.setUint32(40, dataSize, true)
-
-  let offset = 44
-  for (let i = 0; i < buffer.length; i++) {
-    for (let ch = 0; ch < numChannels; ch++) {
-      const sample = buffer.getChannelData(ch)[i]
-      const clamped = Math.max(-1, Math.min(1, sample))
-      view.setInt16(offset, clamped < 0 ? clamped * 0x8000 : clamped * 0x7FFF, true)
-      offset += 2
+  // ウィンドウリサイズ時に再描画
+  const resizeObserver = new ResizeObserver(() => {
+    if (canvas && track.originalBuffer) {
+      drawWaveform(canvas, track.originalBuffer)
     }
-  }
-
-  return new Blob([arrayBuffer], { type: 'audio/wav' })
+  })
+  resizeObserver.observe(container)
 }
 
-function writeString(view: DataView, offset: number, str: string) {
-  for (let i = 0; i < str.length; i++) {
-    view.setUint8(offset + i, str.charCodeAt(i))
+function drawWaveform(canvas: HTMLCanvasElement, buffer: AudioBuffer) {
+  const ctx = canvas.getContext('2d')!
+  const rect = canvas.getBoundingClientRect()
+  const dpr = window.devicePixelRatio || 1
+
+  canvas.width = rect.width * dpr
+  canvas.height = rect.height * dpr
+  ctx.scale(dpr, dpr)
+
+  const width = rect.width
+  const height = rect.height
+  const centerY = height / 2
+
+  // 背景をクリア
+  ctx.fillStyle = state.theme === 'dark' ? '#1e1e2e' : '#f8fafc'
+  ctx.fillRect(0, 0, width, height)
+
+  // 中心線
+  ctx.strokeStyle = state.theme === 'dark' ? '#3d3d5c' : '#e2e8f0'
+  ctx.lineWidth = 1
+  ctx.beginPath()
+  ctx.moveTo(0, centerY)
+  ctx.lineTo(width, centerY)
+  ctx.stroke()
+
+  // 波形データを間引いて描画
+  const data = buffer.getChannelData(0)
+  const step = Math.ceil(data.length / width)
+  const amp = height / 2
+
+  ctx.fillStyle = state.theme === 'dark' ? '#7c3aed' : '#6d28d9'
+  ctx.beginPath()
+
+  for (let i = 0; i < width; i++) {
+    const start = Math.floor(i * data.length / width)
+    const end = Math.min(start + step, data.length)
+
+    let min = 1.0
+    let max = -1.0
+
+    for (let j = start; j < end; j++) {
+      const val = data[j]
+      if (val < min) min = val
+      if (val > max) max = val
+    }
+
+    const yMin = (1 + min) * amp
+    const yMax = (1 + max) * amp
+
+    ctx.fillRect(i, yMax, 1, yMin - yMax || 1)
   }
+
+  ctx.fill()
 }
 
-export function getWaveSurfer(): WaveSurfer | null {
-  return wavesurfer
+export function updateWaveformProgress(progress: number) {
+  if (!canvas) return
+
+  const rect = canvas.getBoundingClientRect()
+  const width = rect.width
+
+  // 再生位置に合わせてプログレスを再描画
+  drawWaveform(canvas, getActiveTrack()!.originalBuffer!)
+
+  // プログレスオーバーレイ
+  const ctx = canvas.getContext('2d')!
+  ctx.fillStyle = state.theme === 'dark' ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.2)'
+  ctx.fillRect(0, 0, width * progress, canvas.height / (window.devicePixelRatio || 1))
+}
+
+export function clearWaveform() {
+  if (animationFrame) {
+    cancelAnimationFrame(animationFrame)
+    animationFrame = null
+  }
+  canvas = null
 }
