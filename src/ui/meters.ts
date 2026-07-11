@@ -3,8 +3,8 @@ import { getCurrentLufs, getCurrentRms, getCurrentPeak } from '../audio/loudness
 
 export function renderMeters(container: HTMLElement) {
   container.innerHTML = `
-    <div class="flex gap-6 items-end">
-      <div class="flex-1">
+    <div class="meter-row flex gap-6 items-end">
+      <div class="flex-1 min-w-0">
         <div class="flex justify-between text-xs mb-1.5" style="color: var(--color-daw-muted);">
           <span class="font-medium">LUFS</span>
           <span id="lufs-value" class="font-mono tabular-nums">-∞</span>
@@ -14,7 +14,7 @@ export function renderMeters(container: HTMLElement) {
         </div>
       </div>
 
-      <div class="flex-1">
+      <div class="flex-1 min-w-0">
         <div class="flex justify-between text-xs mb-1.5" style="color: var(--color-daw-muted);">
           <span class="font-medium">RMS</span>
           <span id="rms-value" class="font-mono tabular-nums">-∞</span>
@@ -24,7 +24,7 @@ export function renderMeters(container: HTMLElement) {
         </div>
       </div>
 
-      <div class="flex-1">
+      <div class="flex-1 min-w-0">
         <div class="flex justify-between text-xs mb-1.5" style="color: var(--color-daw-muted);">
           <span class="font-medium">Peak</span>
           <span id="peak-value" class="font-mono tabular-nums">-∞</span>

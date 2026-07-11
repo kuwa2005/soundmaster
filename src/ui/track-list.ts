@@ -1,13 +1,14 @@
 import { state, setActiveTrack, removeTrack } from '../state'
 import { handleFileDrop } from '../audio/decoder'
+import { t } from '../i18n'
 
 export function renderTrackList(container: HTMLElement) {
   if (state.tracks.length === 0) {
     container.innerHTML = `
       <div id="track-dropzone-empty" class="p-6 text-center h-full flex flex-col items-center justify-center" style="color: var(--color-daw-muted); border: 2px dashed var(--color-daw-border); border-radius: 8px; margin: 8px;">
         <span class="text-4xl block mb-3 opacity-30">🎵</span>
-        <p class="text-sm">ファイルをドロップしてください</p>
-        <p class="text-xs mt-1 opacity-50">または下のドロップゾーン</p>
+        <p class="text-sm">${t('tracks.empty')}</p>
+        <p class="text-xs mt-1 opacity-50">${t('tracks.dropHint')}</p>
       </div>
     `
     initTrackDropzone(container, true)
@@ -18,7 +19,7 @@ export function renderTrackList(container: HTMLElement) {
     <div class="p-3 h-full flex flex-col">
       <div class="flex items-center justify-between mb-3 px-2">
         <h3 class="text-xs font-semibold uppercase tracking-wider" style="color: var(--color-daw-muted);">
-          TRACKS
+          ${t('tracks.title')}
         </h3>
         <span class="text-xs px-2 py-0.5 rounded" style="background: var(--color-daw-panel); color: var(--color-daw-muted);">
           ${state.tracks.length}
@@ -27,7 +28,7 @@ export function renderTrackList(container: HTMLElement) {
       <ul id="track-list-items" class="space-y-1 flex-1 overflow-y-auto">
       </ul>
       <div id="track-dropzone-add" class="mt-3 p-3 text-center text-xs" style="border: 1px dashed var(--color-daw-border); border-radius: 6px; color: var(--color-daw-muted);">
-        + ファイルをドロップで追加
+        ${t('tracks.addHint')}
       </div>
     </div>
   `

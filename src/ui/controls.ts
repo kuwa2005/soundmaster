@@ -1,33 +1,32 @@
 import { state, setOutputSampleRate, OutputSampleRate } from '../state'
 import { rebuildMasteringChain, updateLiveChainParams } from '../audio/mastering-chain'
+import { t } from '../i18n'
 
 const styles = [
-  { value: 'warmth' as const, label: '温もり', icon: '🔥', desc: '低音ブースト・高音カット', color: '#f97316' },
-  { value: 'balance' as const, label: 'バランス', icon: '⚖️', desc: '均一で自然な調整', color: '#3b82f6' },
-  { value: 'openness' as const, label: '開く', icon: '✨', desc: '高音ブースト・広がり', color: '#8b5cf6' },
+  { value: 'warmth' as const, labelKey: 'style.warmth', descKey: 'style.warmth.desc', icon: '🔥', color: '#f97316' },
+  { value: 'balance' as const, labelKey: 'style.balance', descKey: 'style.balance.desc', icon: '⚖️', color: '#3b82f6' },
+  { value: 'openness' as const, labelKey: 'style.openness', descKey: 'style.openness.desc', icon: '✨', color: '#8b5cf6' },
 ]
 
 const loudnessLevels = [
-  { value: 'low' as const, label: '低', desc: '-18 LUFS', color: '#22c55e', bars: 1 },
-  { value: 'medium' as const, label: '中', desc: '-14 LUFS', color: '#eab308', bars: 2 },
-  { value: 'high' as const, label: '高', desc: '-10 LUFS', color: '#ef4444', bars: 3 },
+  { value: 'low' as const, labelKey: 'loudness.low', descKey: 'loudness.low.desc', color: '#22c55e', bars: 1 },
+  { value: 'medium' as const, labelKey: 'loudness.medium', descKey: 'loudness.medium.desc', color: '#eab308', bars: 2 },
+  { value: 'high' as const, labelKey: 'loudness.high', descKey: 'loudness.high.desc', color: '#ef4444', bars: 3 },
 ]
 
-const sampleRates: { value: OutputSampleRate; label: string; desc: string; isHiRes: boolean }[] = [
-  { value: 44100, label: '44.1kHz', desc: 'CD品質', isHiRes: false },
-  { value: 48000, label: '48kHz', desc: '映像標準', isHiRes: false },
-  { value: 88200, label: '88.2kHz', desc: 'ハイレゾ', isHiRes: true },
-  { value: 96000, label: '96kHz', desc: 'ハイレゾ', isHiRes: true },
+const sampleRates: { value: OutputSampleRate; label: string; descKey: string; isHiRes: boolean }[] = [
+  { value: 44100, label: '44.1kHz', descKey: 'samplerate.cd', isHiRes: false },
+  { value: 48000, label: '48kHz', descKey: 'samplerate.video', isHiRes: false },
+  { value: 88200, label: '88.2kHz', descKey: 'samplerate.hires', isHiRes: true },
+  { value: 96000, label: '96kHz', descKey: 'samplerate.hires', isHiRes: true },
 ]
 
 const SLIDER_MAX = 300
 
-// 再生中のパラメータ更新（notifyを呼ばない）
 function handleStyleChange(value: typeof state.style) {
   state.style = value
 
   if (state.isPlaying) {
-    // 再生中はオーディオチェーンだけ更新
     updateLiveChainParams()
   } else {
     rebuildMasteringChain()
@@ -70,33 +69,33 @@ export function renderControls(container: HTMLElement) {
   const highGenPercent = Math.round(highGen * 100)
 
   container.innerHTML = `
-    <div class="flex gap-6 items-start">
-      <div class="flex-1">
-        <h3 class="text-xs font-semibold uppercase tracking-wider mb-3" style="color: var(--color-daw-muted);">STYLE</h3>
+    <div class="controls-row flex gap-6 items-start">
+      <div class="flex-1 min-w-0">
+        <h3 class="text-xs font-semibold uppercase tracking-wider mb-3" style="color: var(--color-daw-muted);">${t('style.title')}</h3>
         <div class="flex gap-2" id="style-buttons">
           ${styles.map(s => `
-            <button 
+            <button
               class="style-option flex-1 px-3 py-3 rounded-lg text-left transition-all ${state.style === s.value ? 'style-selected' : ''}"
               data-style="${s.value}"
               style="border: 2px solid ${state.style === s.value ? s.color : 'var(--color-daw-border)'}; background: ${state.style === s.value ? s.color + '15' : 'var(--color-daw-panel)'};"
             >
               <div class="flex items-center gap-2 mb-1">
                 <span class="text-xl">${s.icon}</span>
-                <span class="text-sm font-bold" style="color: ${state.style === s.value ? s.color : 'var(--color-daw-text)'};">${s.label}</span>
+                <span class="text-sm font-bold" style="color: ${state.style === s.value ? s.color : 'var(--color-daw-text)'};">${t(s.labelKey)}</span>
               </div>
-              <div class="text-xs" style="color: ${state.style === s.value ? s.color : 'var(--color-daw-muted)'};">${s.desc}</div>
+              <div class="text-xs hidden sm:block" style="color: ${state.style === s.value ? s.color : 'var(--color-daw-muted)'};">${t(s.descKey)}</div>
             </button>
           `).join('')}
         </div>
       </div>
 
-      <div class="w-px self-stretch" style="background: var(--color-daw-border);"></div>
+      <div class="w-px self-stretch hidden md:block" style="background: var(--color-daw-border);"></div>
 
-      <div class="flex-1">
-        <h3 class="text-xs font-semibold uppercase tracking-wider mb-3" style="color: var(--color-daw-muted);">LOUDNESS</h3>
+      <div class="flex-1 min-w-0">
+        <h3 class="text-xs font-semibold uppercase tracking-wider mb-3" style="color: var(--color-daw-muted);">${t('loudness.title')}</h3>
         <div class="flex gap-2" id="loudness-buttons">
           ${loudnessLevels.map(l => `
-            <button 
+            <button
               class="loudness-option flex-1 px-3 py-3 rounded-lg text-center transition-all ${state.loudness === l.value ? 'loudness-selected' : ''}"
               data-loudness="${l.value}"
               style="border: 2px solid ${state.loudness === l.value ? l.color : 'var(--color-daw-border)'}; background: ${state.loudness === l.value ? l.color + '15' : 'var(--color-daw-panel)'};"
@@ -106,67 +105,66 @@ export function renderControls(container: HTMLElement) {
                   <div style="width: 4px; height: ${12 + i * 4}px; background: ${state.loudness === l.value ? l.color : 'var(--color-daw-muted)'}; border-radius: 2px;"></div>
                 `).join('')}
               </div>
-              <div class="text-sm font-bold" style="color: ${state.loudness === l.value ? l.color : 'var(--color-daw-text)'};">${l.label}</div>
-              <div class="text-xs" style="color: ${state.loudness === l.value ? l.color : 'var(--color-daw-muted)'};">${l.desc}</div>
+              <div class="text-sm font-bold" style="color: ${state.loudness === l.value ? l.color : 'var(--color-daw-text)'};">${t(l.labelKey)}</div>
+              <div class="text-xs hidden sm:block" style="color: ${state.loudness === l.value ? l.color : 'var(--color-daw-muted)'};">${t(l.descKey)}</div>
             </button>
           `).join('')}
         </div>
       </div>
 
-      <div class="w-px self-stretch" style="background: var(--color-daw-border);"></div>
+      <div class="w-px self-stretch hidden md:block" style="background: var(--color-daw-border);"></div>
 
-      <div class="flex-1">
+      <div class="flex-1 min-w-0">
         <h3 class="text-xs font-semibold uppercase tracking-wider mb-3" style="color: var(--color-daw-muted);">
-          SAMPLE RATE
-          <span style="color: #10b981; font-size: 10px;">● Hi-Res</span>
+          ${t('samplerate.title')}
+          <span style="color: #10b981; font-size: 10px;">● ${t('samplerate.hires')}</span>
         </h3>
-        <div class="flex flex-wrap gap-1" id="samplerate-buttons">
+        <div class="samplerate-buttons flex flex-wrap gap-1" id="samplerate-buttons">
           ${sampleRates.map(sr => `
-            <button 
+            <button
               class="samplerate-option px-2 py-1.5 rounded text-xs transition-all ${state.outputSampleRate === sr.value ? 'selected' : ''}"
               data-samplerate="${sr.value}"
               style="border: 1px solid ${state.outputSampleRate === sr.value ? (sr.isHiRes ? '#10b981' : '#3b82f6') : 'var(--color-daw-border)'}; background: ${state.outputSampleRate === sr.value ? (sr.isHiRes ? '#10b98115' : '#3b82f615') : 'var(--color-daw-panel)'};"
             >
               <div class="font-semibold" style="color: ${state.outputSampleRate === sr.value ? (sr.isHiRes ? '#10b981' : '#3b82f6') : 'var(--color-daw-text)'};">${sr.label}</div>
-              <div style="color: var(--color-daw-muted); font-size: 10px;">${sr.desc}</div>
             </button>
           `).join('')}
         </div>
       </div>
     </div>
 
-    <div class="mt-4 flex gap-6">
-      <div class="flex-1">
+    <div class="generator-row mt-4 flex gap-6">
+      <div class="flex-1 min-w-0">
         <div class="flex items-center justify-between mb-2">
-          <h3 class="text-xs font-semibold uppercase tracking-wider" style="color: var(--color-daw-muted);">
-            <span style="color: #f97316;">●</span> LOW GENERATOR
+          <h3 class="generator-label text-xs font-semibold uppercase tracking-wider" style="color: var(--color-daw-muted);">
+            <span style="color: #f97316;">●</span> ${t('generator.low')}
           </h3>
-          <span id="low-gen-value" class="text-xs font-mono" style="color: ${lowGenPercent > 100 ? '#ef4444' : '#f97316'};">${lowGenPercent}%${lowGenPercent > 100 ? ' ⚠' : ''}</span>
+          <span id="low-gen-value" class="generator-value text-xs font-mono" style="color: ${lowGenPercent > 100 ? '#ef4444' : '#f97316'};">${lowGenPercent}%${lowGenPercent > 100 ? ' ⚠' : ''}</span>
         </div>
-        <input type="range" id="low-gen-slider" min="0" max="${SLIDER_MAX}" value="${lowGenPercent}" 
+        <input type="range" id="low-gen-slider" min="0" max="${SLIDER_MAX}" value="${lowGenPercent}"
           class="w-full h-2 rounded-lg appearance-none cursor-pointer"
           style="background: linear-gradient(to right, ${lowGenPercent > 100 ? '#ef4444' : '#f97316'} ${Math.min(lowGenPercent / SLIDER_MAX * 100, 100)}%, var(--color-daw-panel) ${Math.min(lowGenPercent / SLIDER_MAX * 100, 100)}%);">
         <div class="flex justify-between text-xs mt-1" style="color: var(--color-daw-muted);">
-          <span>OFF</span>
-          <span>低音のハーモニック追加</span>
-          <span>300%</span>
+          <span>${t('generator.off')}</span>
+          <span class="hidden sm:inline">${t('generator.low.desc')}</span>
+          <span>${t('generator.max')}</span>
         </div>
       </div>
 
-      <div class="flex-1">
+      <div class="flex-1 min-w-0">
         <div class="flex items-center justify-between mb-2">
-          <h3 class="text-xs font-semibold uppercase tracking-wider" style="color: var(--color-daw-muted);">
-            <span style="color: #8b5cf6;">●</span> HIGH GENERATOR
+          <h3 class="generator-label text-xs font-semibold uppercase tracking-wider" style="color: var(--color-daw-muted);">
+            <span style="color: #8b5cf6;">●</span> ${t('generator.high')}
           </h3>
-          <span id="high-gen-value" class="text-xs font-mono" style="color: ${highGenPercent > 100 ? '#ef4444' : '#8b5cf6'};">${highGenPercent}%${highGenPercent > 100 ? ' ⚠' : ''}</span>
+          <span id="high-gen-value" class="generator-value text-xs font-mono" style="color: ${highGenPercent > 100 ? '#ef4444' : '#8b5cf6'};">${highGenPercent}%${highGenPercent > 100 ? ' ⚠' : ''}</span>
         </div>
-        <input type="range" id="high-gen-slider" min="0" max="${SLIDER_MAX}" value="${highGenPercent}" 
+        <input type="range" id="high-gen-slider" min="0" max="${SLIDER_MAX}" value="${highGenPercent}"
           class="w-full h-2 rounded-lg appearance-none cursor-pointer"
           style="background: linear-gradient(to right, ${highGenPercent > 100 ? '#ef4444' : '#8b5cf6'} ${Math.min(highGenPercent / SLIDER_MAX * 100, 100)}%, var(--color-daw-panel) ${Math.min(highGenPercent / SLIDER_MAX * 100, 100)}%);">
         <div class="flex justify-between text-xs mt-1" style="color: var(--color-daw-muted);">
-          <span>OFF</span>
-          <span>高音のハーモニック追加</span>
-          <span>300%</span>
+          <span>${t('generator.off')}</span>
+          <span class="hidden sm:inline">${t('generator.high.desc')}</span>
+          <span>${t('generator.max')}</span>
         </div>
       </div>
     </div>

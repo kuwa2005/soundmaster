@@ -1,5 +1,6 @@
 import { state, getActiveTrack, subscribe } from '../state'
 import { exportWav, exportAllAsZip } from '../audio/exporter'
+import { t } from '../i18n'
 
 let pendingDownload: 'one' | 'all' | null = null
 let dialogElement: HTMLDivElement | null = null
@@ -7,17 +8,16 @@ let dialogElement: HTMLDivElement | null = null
 export function renderExportPanel(container: HTMLElement) {
   const track = getActiveTrack()
   const hasBuffer = track?.masteredBuffer !== null && track?.masteredBuffer !== undefined
-  const isMastering = track?.status === 'mastering'
 
   container.innerHTML = `
-    <div class="flex items-center gap-4">
+    <div class="export-row flex items-center gap-4">
       <button id="btn-export-one" class="transport-btn daw-btn px-4 py-2 font-medium" style="background: ${hasBuffer ? 'var(--color-daw-success)' : 'var(--color-daw-panel)'}; color: ${hasBuffer ? 'white' : 'var(--color-daw-muted)'}; border-color: ${hasBuffer ? 'var(--color-daw-success)' : 'var(--color-daw-border)'};">
-        📥 Download
+        ${t('export.download')}
       </button>
       <button id="btn-export-all" class="transport-btn daw-btn px-4 py-2 font-medium" style="background: ${hasBuffer ? 'var(--color-daw-accent)' : 'var(--color-daw-panel)'}; color: ${hasBuffer ? 'white' : 'var(--color-daw-muted)'}; border-color: ${hasBuffer ? 'var(--color-daw-accent)' : 'var(--color-daw-border)'};">
-        📦 Download All as ZIP
+        ${t('export.downloadAll')}
       </button>
-      <div class="flex-1"></div>
+      <div class="flex-1 hidden sm:block"></div>
       <div id="export-status" class="text-sm" style="color: var(--color-daw-muted);"></div>
     </div>
   `
@@ -36,10 +36,8 @@ function handleDownloadClick(type: 'one' | 'all') {
   const hasBuffer = track?.masteredBuffer !== null && track?.masteredBuffer !== undefined
 
   if (hasBuffer) {
-    // レンダリング済み → 即時ダウンロード
     executeDownload(type)
   } else {
-    // レンダリング未完了 → ダイアログ表示して待機
     pendingDownload = type
     showRenderingDialog()
   }
@@ -49,20 +47,20 @@ async function executeDownload(type: 'one' | 'all') {
   const status = document.getElementById('export-status')
 
   if (type === 'one') {
-    if (status) status.textContent = '⏳ Exporting...'
+    if (status) status.textContent = t('export.rendering')
     try {
       await exportWav()
-      if (status) status.textContent = '✓ Done!'
+      if (status) status.textContent = t('export.done')
     } catch (e) {
-      if (status) status.textContent = '✗ Export failed'
+      if (status) status.textContent = t('export.failed')
     }
   } else {
-    if (status) status.textContent = '⏳ Packing...'
+    if (status) status.textContent = t('export.packing')
     try {
       await exportAllAsZip()
-      if (status) status.textContent = '✓ Done!'
+      if (status) status.textContent = t('export.done')
     } catch (e) {
-      if (status) status.textContent = '✗ Export failed'
+      if (status) status.textContent = t('export.failed')
     }
   }
 }
@@ -98,11 +96,10 @@ function showRenderingDialog() {
     ">
       <div style="font-size: 48px; margin-bottom: 16px;">⚙️</div>
       <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 8px; color: var(--color-daw-text);">
-        レンダリング中...
+        ${t('rendering.title')}
       </h3>
-      <p style="font-size: 14px; color: var(--color-daw-muted); margin-bottom: 24px;">
-        マスタリング処理を実行しています。<br>
-        完了後、自動的にダウンロードが開始されます。
+      <p style="font-size: 14px; color: var(--color-daw-muted); margin-bottom: 24px; white-space: pre-line;">
+        ${t('rendering.desc')}
       </p>
       <div style="
         width: 100%;
@@ -129,12 +126,11 @@ function showRenderingDialog() {
         cursor: pointer;
         font-size: 14px;
       ">
-        キャンセル
+        ${t('rendering.cancel')}
       </button>
     </div>
   `
 
-  // アニメーションスタイルを追加
   const style = document.createElement('style')
   style.textContent = `
     @keyframes rendering-pulse {
@@ -153,12 +149,10 @@ function showRenderingDialog() {
 
   document.body.appendChild(dialogElement)
 
-  // キャンセルボタン
   document.getElementById('dialog-cancel')!.addEventListener('click', () => {
     hideRenderingDialog()
   })
 
-  // ステート変更を監視
   checkRenderingStatus()
 }
 
@@ -177,12 +171,10 @@ function checkRenderingStatus() {
   const hasBuffer = track?.masteredBuffer !== null && track?.masteredBuffer !== undefined
 
   if (hasBuffer && pendingDownload) {
-    // レンダリング完了 → ダイアログを閉じてダウンロード実行
     const type = pendingDownload
     hideRenderingDialog()
     executeDownload(type)
   } else {
-    // まだレンダリング中 → 100ms後に再チェック
     setTimeout(checkRenderingStatus, 100)
   }
 }
