@@ -1,6 +1,6 @@
 import { state, getActiveTrack, setPlaying, setCurrentTime, notify } from '../state'
 import { getAudioContext } from './decoder'
-import { createLiveDSPChain } from './mastering-chain'
+import { createLiveDSPChain, clearLiveChainNodes } from './mastering-chain'
 import { startMeterUpdates, stopMeterUpdates } from '../ui/meters'
 import { updateWaveformProgress } from '../ui/waveform'
 
@@ -91,6 +91,8 @@ export function stopAudio() {
   masteredAnalyser = null
   originalChain = null
   masteredChain = null
+
+  clearLiveChainNodes()
 
   if (animationFrame) {
     cancelAnimationFrame(animationFrame)

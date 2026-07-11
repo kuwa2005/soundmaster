@@ -18,6 +18,8 @@ export interface AppState {
   isMastered: boolean
   currentTime: number
   theme: 'light' | 'dark'
+  lowGenAmount: number
+  highGenAmount: number
 }
 
 type StateListener = (state: AppState) => void
@@ -33,6 +35,8 @@ export const state: AppState = {
   isMastered: false,
   currentTime: 0,
   theme: 'light',
+  lowGenAmount: 0.4,
+  highGenAmount: 0.1,
 }
 
 export function subscribe(listener: StateListener) {
@@ -104,6 +108,14 @@ export function setCurrentTime(time: number) {
 export function setTheme(theme: 'light' | 'dark') {
   state.theme = theme
   notify()
+}
+
+export function setLowGenAmount(amount: number) {
+  state.lowGenAmount = amount
+}
+
+export function setHighGenAmount(amount: number) {
+  state.highGenAmount = amount
 }
 
 export function getActiveTrack(): Track | undefined {
