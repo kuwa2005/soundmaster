@@ -24,6 +24,8 @@ export interface AppState {
   highGenAmount: number
   outputSampleRate: OutputSampleRate
   renderProgress: number // 0-100
+  settingsVersion: number // 設定変更カウンター
+  renderedSettingsVersion: number // レンダリング時の設定バージョン
 }
 
 type StateListener = (state: AppState) => void
@@ -43,6 +45,8 @@ export const state: AppState = {
   highGenAmount: 0.2,
   outputSampleRate: 48000,
   renderProgress: 0,
+  settingsVersion: 0,
+  renderedSettingsVersion: -1,
 }
 
 export function subscribe(listener: StateListener) {
@@ -85,11 +89,13 @@ export function setActiveTrack(id: string) {
 
 export function setStyle(style: AppState['style']) {
   state.style = style
+  state.settingsVersion++
   notify()
 }
 
 export function setLoudness(loudness: AppState['loudness']) {
   state.loudness = loudness
+  state.settingsVersion++
   notify()
 }
 

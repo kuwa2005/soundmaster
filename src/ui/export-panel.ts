@@ -1,5 +1,6 @@
 import { state, getActiveTrack } from '../state'
 import { exportWav, exportAllAsZip } from '../audio/exporter'
+import { rebuildMasteringChain } from '../audio/mastering-chain'
 import { t } from '../i18n'
 
 let pendingDownload: 'one' | 'all' | null = null
@@ -9,13 +10,14 @@ let progressInterval: ReturnType<typeof setInterval> | null = null
 export function renderExportPanel(container: HTMLElement) {
   const track = getActiveTrack()
   const hasBuffer = track?.masteredBuffer !== null && track?.masteredBuffer !== undefined
+  const isSettingsValid = state.settingsVersion === state.renderedSettingsVersion
 
   container.innerHTML = `
     <div class="export-row flex items-center gap-4">
-      <button id="btn-export-one" class="transport-btn daw-btn px-4 py-2 font-medium" style="background: ${hasBuffer ? 'var(--color-daw-success)' : 'var(--color-daw-panel)'}; color: ${hasBuffer ? 'white' : 'var(--color-daw-muted)'}; border-color: ${hasBuffer ? 'var(--color-daw-success)' : 'var(--color-daw-border)'};">
+      <button id="btn-export-one" class="transport-btn daw-btn px-4 py-2 font-medium" style="background: ${hasBuffer && isSettingsValid ? 'var(--color-daw-success)' : 'var(--color-daw-panel)'}; color: ${hasBuffer && isSettingsValid ? 'white' : 'var(--color-daw-muted)'}; border-color: ${hasBuffer && isSettingsValid ? 'var(--color-daw-success)' : 'var(--color-daw-border)'};">
         ${t('export.download')}
       </button>
-      <button id="btn-export-all" class="transport-btn daw-btn px-4 py-2 font-medium" style="background: ${hasBuffer ? 'var(--color-daw-accent)' : 'var(--color-daw-panel)'}; color: ${hasBuffer ? 'white' : 'var(--color-daw-muted)'}; border-color: ${hasBuffer ? 'var(--color-daw-accent)' : 'var(--color-daw-border)'};">
+      <button id="btn-export-all" class="transport-btn daw-btn px-4 py-2 font-medium" style="background: ${hasBuffer && isSettingsValid ? 'var(--color-daw-accent)' : 'var(--color-daw-panel)'}; color: ${hasBuffer && isSettingsValid ? 'white' : 'var(--color-daw-muted)'}; border-color: ${hasBuffer && isSettingsValid ? 'var(--color-daw-accent)' : 'var(--color-daw-border)'};">
         ${t('export.downloadAll')}
       </button>
       <div class="flex-1 hidden sm:block"></div>
@@ -32,15 +34,27 @@ export function renderExportPanel(container: HTMLElement) {
   })
 }
 
-function handleDownloadClick(type: 'one' | 'all') {
+function isRenderUpToDate(): boolean {
   const track = getActiveTrack()
-  const hasBuffer = track?.masteredBuffer !== null && track?.masteredBuffer !== undefined
+  if (!track?.masteredBuffer) return false
+  return state.settingsVersion === state.renderedSettingsVersion
+}
 
-  if (hasBuffer) {
+async function handleDownloadClick(type: 'one' | 'all') {
+  if (isRenderUpToDate()) {
+    // 設定が有効なら即ダウンロード
     executeDownload(type)
   } else {
+    // 設定が変更されていれば再レンダリング後にダウンロード
     pendingDownload = type
     showRenderingDialog()
+
+    // バッファをクリアして再レンダリング
+    const track = getActiveTrack()
+    if (track) {
+      track.masteredBuffer = null
+    }
+    await rebuildMasteringChain()
   }
 }
 
@@ -145,7 +159,6 @@ function showRenderingDialog() {
     hideRenderingDialog()
   })
 
-  // 進捗を定期的に更新
   progressInterval = setInterval(updateProgressDisplay, 100)
   checkRenderingStatus()
 }
@@ -179,8 +192,9 @@ function checkRenderingStatus() {
   const track = getActiveTrack()
   const hasBuffer = track?.masteredBuffer !== null && track?.masteredBuffer !== undefined
   const isDone = track?.status === 'done'
+  const isUpToDate = state.settingsVersion === state.renderedSettingsVersion
 
-  if (hasBuffer && isDone && pendingDownload) {
+  if (hasBuffer && isDone && isUpToDate && pendingDownload) {
     const type = pendingDownload
     hideRenderingDialog()
     executeDownload(type)

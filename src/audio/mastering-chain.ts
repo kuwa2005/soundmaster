@@ -213,6 +213,7 @@ export async function rebuildMasteringChain() {
 
     track.masteredBuffer = rendered
     track.status = 'done'
+    state.renderedSettingsVersion = state.settingsVersion
     setRenderProgress(100)
     notify()
   } catch (e) {

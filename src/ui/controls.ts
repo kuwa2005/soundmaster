@@ -80,6 +80,7 @@ function handleGenChange(type: 'low' | 'high', value: number) {
   } else {
     state.highGenAmount = value
   }
+  state.settingsVersion++
 
   if (state.isPlaying) {
     updateLiveChainParams()
@@ -90,6 +91,7 @@ function handleGenChange(type: 'low' | 'high', value: number) {
 
 function handleSampleRateChange(value: OutputSampleRate) {
   setOutputSampleRate(value)
+  state.settingsVersion++
   rebuildMasteringChain()
 }
 
