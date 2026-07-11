@@ -11,27 +11,37 @@ export function getAudioContext(): AudioContext {
 }
 
 export async function handleFileDrop(files: FileList) {
-  for (const file of Array.from(files)) {
+  const fileArray = Array.from(files)
+
+  // まず全てのトラックを即座にUIに追加
+  const tracks: Track[] = fileArray.map(file => {
     const isVideo = file.type.startsWith('video/')
     const format = file.name.split('.').pop()?.toLowerCase() || 'unknown'
 
-    const track: Track = {
+    return {
       id: crypto.randomUUID(),
       name: file.name,
       originalBuffer: null,
       masteredBuffer: null,
-      status: 'loading',
+      status: 'loading' as const,
       format,
       isVideo,
       fileName: file.name,
     }
+  })
 
+  // 全トラックを一括追加してUI更新
+  for (const track of tracks) {
     addTrack(track)
+  }
 
+  // 各ファイルを並列でデコード
+  const decodePromises = fileArray.map(async (file, index) => {
+    const track = tracks[index]
     try {
       let buffer: AudioBuffer
 
-      if (isVideo) {
+      if (track.isVideo) {
         buffer = await extractAudioFromVideo(file)
       } else {
         buffer = await decodeAudioFile(file)
@@ -40,14 +50,20 @@ export async function handleFileDrop(files: FileList) {
       track.originalBuffer = buffer
       track.status = 'ready'
       notify()
-
-      // ファイル読み込み後に自動でマスタリング実行
-      await rebuildMasteringChain()
     } catch (e) {
       console.error('Failed to decode:', file.name, e)
       track.status = 'error'
       notify()
     }
+  })
+
+  // デコード完了を待つ
+  await Promise.all(decodePromises)
+
+  // 最初のトラックをアクティブに設定
+  if (tracks.length > 0 && tracks[0].originalBuffer) {
+    // マスタリングを実行（非同期、ブロックしない）
+    rebuildMasteringChain()
   }
 }
 
@@ -58,7 +74,6 @@ async function decodeAudioFile(file: File): Promise<AudioBuffer> {
   try {
     return await ctx.decodeAudioData(arrayBuffer)
   } catch (e) {
-    // FLAC fallback: try with different approach
     if (file.name.toLowerCase().endsWith('.flac')) {
       return await decodeFlacFallback(arrayBuffer)
     }
@@ -68,15 +83,12 @@ async function decodeAudioFile(file: File): Promise<AudioBuffer> {
 
 async function decodeFlacFallback(arrayBuffer: ArrayBuffer): Promise<AudioBuffer> {
   const ctx = getAudioContext()
-  // Try decoding with resampled context
-  const tempCtx = new OfflineAudioContext(2, 44100 * 10, 44100)
   const response = await fetch(URL.createObjectURL(new Blob([arrayBuffer])))
   const audioData = await response.arrayBuffer()
   return await ctx.decodeAudioData(audioData)
 }
 
 async function extractAudioFromVideo(file: File): Promise<AudioBuffer> {
-  // Dynamic import for ffmpeg.wasm (lazy load ~25MB)
   const { FFmpeg } = await import('@ffmpeg/ffmpeg')
   const { toBlobURL } = await import('@ffmpeg/util')
 
