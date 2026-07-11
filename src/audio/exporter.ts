@@ -6,7 +6,8 @@ export async function exportWav(): Promise<void> {
   if (!track?.masteredBuffer) return
 
   const blob = audioBufferToWav(track.masteredBuffer)
-  downloadBlob(blob, `${track.name.replace(/\.[^.]+$/, '')}_mastered.wav`)
+  const sampleRateLabel = getSampleRateLabel(track.masteredBuffer.sampleRate)
+  downloadBlob(blob, `${track.name.replace(/\.[^.]+$/, '')}_mastered_${sampleRateLabel}.wav`)
 }
 
 export async function exportAllAsZip(): Promise<void> {
@@ -16,7 +17,8 @@ export async function exportAllAsZip(): Promise<void> {
   for (const track of state.tracks) {
     if (track.masteredBuffer) {
       const blob = audioBufferToWav(track.masteredBuffer)
-      const fileName = `${track.name.replace(/\.[^.]+$/, '')}_mastered.wav`
+      const sampleRateLabel = getSampleRateLabel(track.masteredBuffer.sampleRate)
+      const fileName = `${track.name.replace(/\.[^.]+$/, '')}_mastered_${sampleRateLabel}.wav`
       zip.file(fileName, blob)
       count++
     }
@@ -28,10 +30,19 @@ export async function exportAllAsZip(): Promise<void> {
   downloadBlob(zipBlob, 'soundmaster_export.zip')
 }
 
+function getSampleRateLabel(sampleRate: number): string {
+  if (sampleRate >= 176400) return '176k4'
+  if (sampleRate >= 96000) return '96k'
+  if (sampleRate >= 88200) return '88k2'
+  if (sampleRate >= 48000) return '48k'
+  return '44k1'
+}
+
 function audioBufferToWav(buffer: AudioBuffer): Blob {
   const numChannels = buffer.numberOfChannels
   const sampleRate = buffer.sampleRate
-  const bitDepth = 16
+  // ハイレゾ対応: 24bitで出力
+  const bitDepth = sampleRate > 48000 ? 24 : 16
   const bytesPerSample = bitDepth / 8
   const blockAlign = numChannels * bytesPerSample
   const dataSize = buffer.length * blockAlign
@@ -64,9 +75,23 @@ function audioBufferToWav(buffer: AudioBuffer): Blob {
     for (let ch = 0; ch < numChannels; ch++) {
       const sample = buffer.getChannelData(ch)[i]
       const clamped = Math.max(-1, Math.min(1, sample))
-      const intSample = clamped < 0 ? clamped * 0x8000 : clamped * 0x7FFF
-      view.setInt16(offset, intSample, true)
-      offset += 2
+
+      if (bitDepth === 24) {
+        // 24bit
+        const intSample = Math.round(clamped * 0x7FFFFF)
+        const bytes = new Uint8Array([
+          intSample & 0xFF,
+          (intSample >> 8) & 0xFF,
+          (intSample >> 16) & 0xFF,
+        ])
+        new Uint8Array(arrayBuffer, offset, 3).set(bytes)
+        offset += 3
+      } else {
+        // 16bit
+        const intSample = clamped < 0 ? clamped * 0x8000 : clamped * 0x7FFF
+        view.setInt16(offset, intSample, true)
+        offset += 2
+      }
     }
   }
 

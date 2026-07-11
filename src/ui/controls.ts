@@ -1,4 +1,4 @@
-import { state, setStyle, setLoudness, setLowGenAmount, setHighGenAmount } from '../state'
+import { state, setStyle, setLoudness, setLowGenAmount, setHighGenAmount, setOutputSampleRate, OutputSampleRate } from '../state'
 import { rebuildMasteringChain, updateLiveChainParams } from '../audio/mastering-chain'
 
 const styles = [
@@ -11,6 +11,15 @@ const loudnessLevels = [
   { value: 'low' as const, label: '低', desc: '-18 LUFS', color: '#22c55e', bars: 1 },
   { value: 'medium' as const, label: '中', desc: '-14 LUFS', color: '#eab308', bars: 2 },
   { value: 'high' as const, label: '高', desc: '-10 LUFS', color: '#ef4444', bars: 3 },
+]
+
+const sampleRates: { value: OutputSampleRate; label: string; desc: string; isHiRes: boolean }[] = [
+  { value: 44100, label: '44.1kHz', desc: 'CD品質', isHiRes: false },
+  { value: 48000, label: '48kHz', desc: '映像標準', isHiRes: false },
+  { value: 88200, label: '88.2kHz', desc: 'ハイレゾ', isHiRes: true },
+  { value: 96000, label: '96kHz', desc: 'ハイレゾ', isHiRes: true },
+  { value: 176400, label: '176.4kHz', desc: 'スーパーMD', isHiRes: true },
+  { value: 192000, label: '192kHz', desc: 'スーパーMD', isHiRes: true },
 ]
 
 const styleDefaults: Record<string, { lowGen: number; highGen: number }> = {
@@ -58,6 +67,11 @@ function handleGenChange(type: 'low' | 'high', value: number) {
   }
 }
 
+function handleSampleRateChange(value: OutputSampleRate) {
+  setOutputSampleRate(value)
+  rebuildMasteringChain()
+}
+
 export function renderControls(container: HTMLElement) {
   const lowGen = state.lowGenAmount
   const highGen = state.highGenAmount
@@ -103,6 +117,27 @@ export function renderControls(container: HTMLElement) {
               </div>
               <div class="text-sm font-bold" style="color: ${state.loudness === l.value ? l.color : 'var(--color-daw-text)'};">${l.label}</div>
               <div class="text-xs" style="color: ${state.loudness === l.value ? l.color : 'var(--color-daw-muted)'};">${l.desc}</div>
+            </button>
+          `).join('')}
+        </div>
+      </div>
+
+      <div class="w-px self-stretch" style="background: var(--color-daw-border);"></div>
+
+      <div class="flex-1">
+        <h3 class="text-xs font-semibold uppercase tracking-wider mb-3" style="color: var(--color-daw-muted);">
+          SAMPLE RATE
+          <span style="color: #10b981; font-size: 10px;">● Hi-Res</span>
+        </h3>
+        <div class="flex flex-wrap gap-1" id="samplerate-buttons">
+          ${sampleRates.map(sr => `
+            <button 
+              class="samplerate-option px-2 py-1.5 rounded text-xs transition-all ${state.outputSampleRate === sr.value ? 'selected' : ''}"
+              data-samplerate="${sr.value}"
+              style="border: 1px solid ${state.outputSampleRate === sr.value ? (sr.isHiRes ? '#10b981' : '#3b82f6') : 'var(--color-daw-border)'}; background: ${state.outputSampleRate === sr.value ? (sr.isHiRes ? '#10b98115' : '#3b82f615') : 'var(--color-daw-panel)'};"
+            >
+              <div class="font-semibold" style="color: ${state.outputSampleRate === sr.value ? (sr.isHiRes ? '#10b981' : '#3b82f6') : 'var(--color-daw-text)'};">${sr.label}</div>
+              <div style="color: var(--color-daw-muted); font-size: 10px;">${sr.desc}</div>
             </button>
           `).join('')}
         </div>
@@ -159,6 +194,14 @@ export function renderControls(container: HTMLElement) {
     btn.addEventListener('click', () => {
       const value = btn.getAttribute('data-loudness') as typeof state.loudness
       handleLoudnessChange(value)
+    })
+  })
+
+  // サンプルレートボタン
+  document.querySelectorAll('.samplerate-option').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const value = parseInt(btn.getAttribute('data-samplerate')!) as OutputSampleRate
+      handleSampleRateChange(value)
     })
   })
 

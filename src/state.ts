@@ -9,6 +9,8 @@ export interface Track {
   fileName: string
 }
 
+export type OutputSampleRate = 44100 | 48000 | 88200 | 96000 | 176400 | 192000
+
 export interface AppState {
   tracks: Track[]
   activeTrackId: string | null
@@ -20,6 +22,7 @@ export interface AppState {
   theme: 'light' | 'dark'
   lowGenAmount: number
   highGenAmount: number
+  outputSampleRate: OutputSampleRate
 }
 
 type StateListener = (state: AppState) => void
@@ -37,6 +40,7 @@ export const state: AppState = {
   theme: 'light',
   lowGenAmount: 0.2,
   highGenAmount: 0.2,
+  outputSampleRate: 96000,
 }
 
 export function subscribe(listener: StateListener) {
@@ -116,6 +120,10 @@ export function setLowGenAmount(amount: number) {
 
 export function setHighGenAmount(amount: number) {
   state.highGenAmount = amount
+}
+
+export function setOutputSampleRate(rate: OutputSampleRate) {
+  state.outputSampleRate = rate
 }
 
 export function getActiveTrack(): Track | undefined {

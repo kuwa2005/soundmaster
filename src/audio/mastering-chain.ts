@@ -160,12 +160,17 @@ export async function rebuildMasteringChain() {
   notify()
 
   try {
-    const ctx = getAudioContext()
     const buffer = track.originalBuffer
+    const targetSampleRate = state.outputSampleRate
+
+    // オーバーサンプリングで高域を補完
+    const oversampleRate = targetSampleRate > buffer.sampleRate ? 2 : 1
+    const renderSampleRate = buffer.sampleRate * oversampleRate
+
     const offlineCtx = new OfflineAudioContext(
       buffer.numberOfChannels,
-      buffer.length,
-      buffer.sampleRate
+      Math.ceil(buffer.length * (renderSampleRate / buffer.sampleRate)),
+      renderSampleRate
     )
 
     const source = offlineCtx.createBufferSource()
@@ -176,7 +181,13 @@ export async function rebuildMasteringChain() {
     chain.output.connect(offlineCtx.destination)
     source.start(0)
 
-    const rendered = await offlineCtx.startRendering()
+    let rendered = await offlineCtx.startRendering()
+
+    // ターゲットサンプルレートにダウンサンプルが必要な場合
+    if (renderSampleRate !== targetSampleRate) {
+      rendered = await downsampleBuffer(rendered, targetSampleRate)
+    }
+
     track.masteredBuffer = rendered
     track.status = 'done'
     notify()
@@ -185,6 +196,21 @@ export async function rebuildMasteringChain() {
     track.status = 'error'
     notify()
   }
+}
+
+async function downsampleBuffer(buffer: AudioBuffer, targetSampleRate: number): Promise<AudioBuffer> {
+  const offlineCtx = new OfflineAudioContext(
+    buffer.numberOfChannels,
+    Math.ceil(buffer.length * (targetSampleRate / buffer.sampleRate)),
+    targetSampleRate
+  )
+
+  const source = offlineCtx.createBufferSource()
+  source.buffer = buffer
+  source.connect(offlineCtx.destination)
+  source.start(0)
+
+  return offlineCtx.startRendering()
 }
 
 function createDSPChain(ctx: OfflineAudioContext | AudioContext, style: string, loudness: string) {
