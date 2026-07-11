@@ -41,7 +41,7 @@ export const state: AppState = {
   theme: 'light',
   lowGenAmount: 0.2,
   highGenAmount: 0.2,
-  outputSampleRate: 96000,
+  outputSampleRate: 48000,
   renderProgress: 0,
 }
 
