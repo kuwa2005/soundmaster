@@ -167,11 +167,15 @@ export async function rebuildMasteringChain() {
   try {
     const buffer = track.originalBuffer
     const targetSampleRate = state.outputSampleRate
-    setRenderProgress(10)
+
+    // オーディオの長さから推定レンダリング時間を計算
+    const durationSec = buffer.duration
+    const estimatedRenderTimeMs = Math.max(500, durationSec * 15) // 1秒あたり約15msと推定
+    setRenderProgress(5)
 
     const oversampleRate = targetSampleRate > buffer.sampleRate ? 2 : 1
     const renderSampleRate = buffer.sampleRate * oversampleRate
-    setRenderProgress(20)
+    setRenderProgress(10)
 
     const offlineCtx = new OfflineAudioContext(
       buffer.numberOfChannels,
@@ -186,19 +190,21 @@ export async function rebuildMasteringChain() {
     source.connect(chain.input)
     chain.output.connect(offlineCtx.destination)
     source.start(0)
-    setRenderProgress(30)
+    setRenderProgress(15)
 
-    // 進捗シミュレーション（Rendering中はリアルタイムで更新）
-    const progressInterval = simulateRenderProgress()
+    // 実時間ベースの進捗シミュレーション
+    const startTime = Date.now()
+    const progressInterval = simulateRenderProgress(startTime, estimatedRenderTimeMs)
 
     let rendered = await offlineCtx.startRendering()
 
     clearInterval(progressInterval)
 
     if (thisVersion !== renderVersion) return
-    setRenderProgress(70)
+    setRenderProgress(75)
 
     if (renderSampleRate !== targetSampleRate) {
+      setRenderProgress(80)
       rendered = await downsampleBuffer(rendered, targetSampleRate)
     }
 
@@ -219,14 +225,14 @@ export async function rebuildMasteringChain() {
   }
 }
 
-function simulateRenderProgress(): ReturnType<typeof setInterval> {
-  let progress = 30
+function simulateRenderProgress(startTime: number, estimatedDurationMs: number): ReturnType<typeof setInterval> {
   return setInterval(() => {
-    if (progress < 65) {
-      progress += Math.random() * 3 + 1
-      setRenderProgress(Math.min(65, Math.round(progress)))
-    }
-  }, 200)
+    const elapsed = Date.now() - startTime
+    // 15%から75%の範囲で進捗を計算
+    const renderProgress = Math.min(1, elapsed / estimatedDurationMs)
+    const displayProgress = 15 + Math.floor(renderProgress * 60)
+    setRenderProgress(Math.min(74, displayProgress))
+  }, 100)
 }
 
 async function downsampleBuffer(buffer: AudioBuffer, targetSampleRate: number): Promise<AudioBuffer> {
