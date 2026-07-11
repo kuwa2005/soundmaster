@@ -90,6 +90,10 @@ export function setPlaying(playing: boolean) {
 
 export function setMastered(mastered: boolean) {
   state.isMastered = mastered
+}
+
+export function setMasteredAndNotify(mastered: boolean) {
+  state.isMastered = mastered
   notify()
 }
 

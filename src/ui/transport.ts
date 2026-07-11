@@ -1,4 +1,4 @@
-import { state, setMastered, notify } from '../state'
+import { state } from '../state'
 import { playAudio, stopAudio, pauseAudio } from '../audio/playback'
 import { switchToOriginal, switchToMastered } from '../audio/ab-switch'
 
@@ -55,12 +55,10 @@ export function renderTransport(container: HTMLElement) {
   document.getElementById('btn-original')!.addEventListener('click', () => {
     if (!state.isMastered) return
     switchToOriginal()
-    notify()
   })
 
   document.getElementById('btn-mastered')!.addEventListener('click', () => {
     if (state.isMastered) return
     switchToMastered()
-    notify()
   })
 }
