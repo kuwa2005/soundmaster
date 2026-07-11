@@ -28,6 +28,7 @@ function handleStyleChange(value: typeof state.style) {
 
   if (state.isPlaying) {
     updateLiveChainParams()
+    updateStyleButtonStyles()
   } else {
     rebuildMasteringChain()
   }
@@ -38,9 +39,38 @@ function handleLoudnessChange(value: typeof state.loudness) {
 
   if (state.isPlaying) {
     updateLiveChainParams()
+    updateLoudnessButtonStyles()
   } else {
     rebuildMasteringChain()
   }
+}
+
+function updateStyleButtonStyles() {
+  document.querySelectorAll('.style-option').forEach((btn: Element) => {
+    const el = btn as HTMLElement
+    const btnStyle = el.getAttribute('data-style')
+    const s = styles.find(s => s.value === btnStyle)
+    if (!s) return
+    const isSelected = state.style === btnStyle
+    el.style.borderColor = isSelected ? s.color : 'var(--color-daw-border)'
+    el.style.background = isSelected ? s.color + '15' : 'var(--color-daw-panel)'
+    const label = el.querySelector('.text-sm.font-bold') as HTMLElement
+    if (label) label.style.color = isSelected ? s.color : 'var(--color-daw-text)'
+  })
+}
+
+function updateLoudnessButtonStyles() {
+  document.querySelectorAll('.loudness-option').forEach((btn: Element) => {
+    const el = btn as HTMLElement
+    const btnLoudness = el.getAttribute('data-loudness')
+    const l = loudnessLevels.find(l => l.value === btnLoudness)
+    if (!l) return
+    const isSelected = state.loudness === btnLoudness
+    el.style.borderColor = isSelected ? l.color : 'var(--color-daw-border)'
+    el.style.background = isSelected ? l.color + '15' : 'var(--color-daw-panel)'
+    const label = el.querySelector('.text-sm.font-bold') as HTMLElement
+    if (label) label.style.color = isSelected ? l.color : 'var(--color-daw-text)'
+  })
 }
 
 function handleGenChange(type: 'low' | 'high', value: number) {
