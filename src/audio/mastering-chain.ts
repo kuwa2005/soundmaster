@@ -68,23 +68,32 @@ interface LiveChainNodes {
   limiter: DynamicsCompressorNode
   outputGain: GainNode
   lowGenMix: GainNode
+  lowGenShaper: WaveShaperNode
+  lowGenSmooth: BiquadFilterNode
   highGenMix: GainNode
+  highGenShaper: WaveShaperNode
+  highGenShelf: BiquadFilterNode
 }
 
 let liveChainNodes: LiveChainNodes | null = null
 
-function createWaveShaper(ctx: OfflineAudioContext | AudioContext, amount: number): WaveShaperNode {
-  const shaper = ctx.createWaveShaper()
+function generateWaveShaperCurve(amount: number): Float32Array {
   const samples = 44100
   const curve = new Float32Array(samples)
   const deg = Math.PI / 180
+  const drive = 3 + amount * 20
 
   for (let i = 0; i < samples; i++) {
     const x = (i * 2) / samples - 1
-    curve[i] = ((3 + amount * 20) * x * 20 * deg) / (Math.PI + (3 + amount * 20) * Math.abs(x))
+    curve[i] = (drive * x * 20 * deg) / (Math.PI + drive * Math.abs(x))
   }
 
-  shaper.curve = curve
+  return curve
+}
+
+function createWaveShaper(ctx: OfflineAudioContext | AudioContext, amount: number): WaveShaperNode {
+  const shaper = ctx.createWaveShaper()
+  shaper.curve = generateWaveShaperCurve(amount)
   shaper.oversample = '4x'
   return shaper
 }
@@ -113,7 +122,7 @@ function createLowGenerator(ctx: OfflineAudioContext | AudioContext, amount: num
   smooth.connect(mix)
   mix.connect(output)
 
-  return { input, output }
+  return { input, output, shaper, smooth }
 }
 
 function createHighGenerator(ctx: OfflineAudioContext | AudioContext, amount: number, sampleRate: number) {
@@ -140,7 +149,7 @@ function createHighGenerator(ctx: OfflineAudioContext | AudioContext, amount: nu
   shelf.connect(mix)
   mix.connect(output)
 
-  return { input, output }
+  return { input, output, shaper, shelf }
 }
 
 export async function rebuildMasteringChain() {
@@ -229,6 +238,22 @@ function createDSPChain(ctx: OfflineAudioContext | AudioContext, style: string, 
 
   output.gain.value = Math.pow(10, lp.outputGain / 20)
 
+  // Store node references for real-time updates
+  liveChainNodes = {
+    eqLow,
+    eqMid,
+    eqHigh,
+    compressor,
+    limiter,
+    outputGain: output,
+    lowGenMix,
+    lowGenShaper: lowGen.shaper,
+    lowGenSmooth: lowGen.smooth,
+    highGenMix,
+    highGenShaper: highGen.shaper,
+    highGenShelf: highGen.shelf,
+  }
+
   // Main EQ chain
   input.connect(eqLow)
   eqLow.connect(eqMid)
@@ -253,89 +278,7 @@ function createDSPChain(ctx: OfflineAudioContext | AudioContext, style: string, 
 }
 
 export function createLiveDSPChain(ctx: AudioContext, style: string, loudness: string) {
-  const sp = styleParams[style]
-  const lp = loudnessParams[loudness]
-  const sampleRate = ctx.sampleRate || 44100
-
-  const lowGenAmount = state.lowGenAmount
-  const highGenAmount = state.highGenAmount
-
-  const input = ctx.createGain()
-  const output = ctx.createGain()
-
-  const eqLow = ctx.createBiquadFilter()
-  eqLow.type = 'lowshelf'
-  eqLow.frequency.value = sp.eqLowFreq
-  eqLow.gain.value = sp.eqLowGain
-
-  const eqMid = ctx.createBiquadFilter()
-  eqMid.type = 'peaking'
-  eqMid.frequency.value = sp.eqMidFreq
-  eqMid.gain.value = sp.eqMidGain
-  eqMid.Q.value = sp.eqMidQ
-
-  const eqHigh = ctx.createBiquadFilter()
-  eqHigh.type = 'highshelf'
-  eqHigh.frequency.value = sp.eqHighFreq
-  eqHigh.gain.value = sp.eqHighGain
-
-  const lowGen = createLowGenerator(ctx, lowGenAmount, sampleRate)
-  const lowGenMix = ctx.createGain()
-  lowGenMix.gain.value = lowGenAmount
-
-  const highGen = createHighGenerator(ctx, highGenAmount, sampleRate)
-  const highGenMix = ctx.createGain()
-  highGenMix.gain.value = highGenAmount
-
-  const compressor = ctx.createDynamicsCompressor()
-  compressor.threshold.value = sp.compThreshold
-  compressor.ratio.value = sp.compRatio
-  compressor.attack.value = sp.compAttack
-  compressor.release.value = sp.compRelease
-  compressor.knee.value = sp.compKnee
-
-  const limiter = ctx.createDynamicsCompressor()
-  limiter.threshold.value = lp.limiterThreshold
-  limiter.ratio.value = 20
-  limiter.attack.value = 0.001
-  limiter.release.value = sp.limiterRelease
-  limiter.knee.value = 0
-
-  output.gain.value = Math.pow(10, lp.outputGain / 20)
-
-  // Store node references for real-time updates
-  liveChainNodes = {
-    eqLow,
-    eqMid,
-    eqHigh,
-    compressor,
-    limiter,
-    outputGain: output,
-    lowGenMix,
-    highGenMix,
-  }
-
-  // Main EQ chain
-  input.connect(eqLow)
-  eqLow.connect(eqMid)
-  eqMid.connect(eqHigh)
-
-  // Low Generator parallel path
-  input.connect(lowGen.input)
-  lowGen.output.connect(lowGenMix)
-  lowGenMix.connect(eqHigh)
-
-  // High Generator parallel path
-  input.connect(highGen.input)
-  highGen.output.connect(highGenMix)
-  highGenMix.connect(eqHigh)
-
-  // To compressor and limiter
-  eqHigh.connect(compressor)
-  compressor.connect(limiter)
-  limiter.connect(output)
-
-  return { input, output }
+  return createDSPChain(ctx, style, loudness)
 }
 
 // Real-time parameter update for live playback
@@ -376,9 +319,18 @@ export function updateLiveChainParams() {
   liveChainNodes.outputGain.gain.setValueAtTime(liveChainNodes.outputGain.gain.value, now)
   liveChainNodes.outputGain.gain.linearRampToValueAtTime(newGain, now + 0.05)
 
-  // Update generator amounts
-  liveChainNodes.lowGenMix.gain.setValueAtTime(state.lowGenAmount, now)
-  liveChainNodes.highGenMix.gain.setValueAtTime(state.highGenAmount, now)
+  // Update Low Generator - mix level and shaper curve
+  const lowGenAmount = state.lowGenAmount
+  liveChainNodes.lowGenMix.gain.setValueAtTime(liveChainNodes.lowGenMix.gain.value, now)
+  liveChainNodes.lowGenMix.gain.linearRampToValueAtTime(lowGenAmount, now + 0.02)
+  liveChainNodes.lowGenShaper.curve = generateWaveShaperCurve(lowGenAmount * 2)
+
+  // Update High Generator - mix level and shaper curve
+  const highGenAmount = state.highGenAmount
+  liveChainNodes.highGenMix.gain.setValueAtTime(liveChainNodes.highGenMix.gain.value, now)
+  liveChainNodes.highGenMix.gain.linearRampToValueAtTime(highGenAmount, now + 0.02)
+  liveChainNodes.highGenShaper.curve = generateWaveShaperCurve(highGenAmount * 2)
+  liveChainNodes.highGenShelf.gain.setValueAtTime(highGenAmount * 6, now)
 }
 
 export function clearLiveChainNodes() {
