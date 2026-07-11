@@ -4,7 +4,12 @@ import { createLiveDSPChain } from './mastering-chain'
 import { startMeterUpdates, stopMeterUpdates } from '../ui/meters'
 
 let sourceNode: AudioBufferSourceNode | null = null
-let analyserNode: AnalyserNode | null = null
+let originalGain: GainNode | null = null
+let masteredGain: GainNode | null = null
+let originalAnalyser: AnalyserNode | null = null
+let masteredAnalyser: AnalyserNode | null = null
+let originalChain: { input: AudioNode; output: AudioNode } | null = null
+let masteredChain: { input: AudioNode; output: AudioNode } | null = null
 let startTime = 0
 let startOffset = 0
 let animationFrame: number | null = null
@@ -13,31 +18,39 @@ export function playAudio(offset?: number) {
   const track = getActiveTrack()
   if (!track?.originalBuffer) return
 
-  // 引数で指定された場合はそれを使用、そうでなければ現在のstartOffsetを使用
   const playOffset = offset !== undefined ? offset : startOffset
-
   stopAudio()
 
   const ctx = getAudioContext()
-  const buffer = state.isMastered ? track.masteredBuffer : track.originalBuffer
-  if (!buffer) return
+  if (!track.originalBuffer) return
 
+  // Create source
   sourceNode = ctx.createBufferSource()
-  sourceNode.buffer = buffer
+  sourceNode.buffer = track.originalBuffer
 
-  // Create analyser for metering
-  analyserNode = ctx.createAnalyser()
-  analyserNode.fftSize = 2048
+  // Create gain nodes for crossfading
+  originalGain = ctx.createGain()
+  masteredGain = ctx.createGain()
+  originalGain.gain.value = state.isMastered ? 0 : 1
+  masteredGain.gain.value = state.isMastered ? 1 : 0
 
-  if (state.isMastered) {
-    const chain = createLiveDSPChain(ctx, state.style, state.loudness)
-    sourceNode.connect(chain.input)
-    chain.output.connect(analyserNode)
-    analyserNode.connect(ctx.destination)
-  } else {
-    sourceNode.connect(analyserNode)
-    analyserNode.connect(ctx.destination)
-  }
+  // Create analysers for metering
+  originalAnalyser = ctx.createAnalyser()
+  originalAnalyser.fftSize = 2048
+  masteredAnalyser = ctx.createAnalyser()
+  masteredAnalyser.fftSize = 2048
+
+  // Original path: source → originalGain → originalAnalyser → destination
+  sourceNode.connect(originalGain)
+  originalGain.connect(originalAnalyser)
+  originalAnalyser.connect(ctx.destination)
+
+  // Mastered path: source → masteredChain → masteredGain → masteredAnalyser → destination
+  masteredChain = createLiveDSPChain(ctx, state.style, state.loudness)
+  sourceNode.connect(masteredChain.input)
+  masteredChain.output.connect(masteredGain)
+  masteredGain.connect(masteredAnalyser)
+  masteredAnalyser.connect(ctx.destination)
 
   sourceNode.start(0, playOffset)
   startTime = ctx.currentTime - playOffset
@@ -66,10 +79,17 @@ export function stopAudio() {
     sourceNode = null
   }
 
-  if (analyserNode) {
-    analyserNode.disconnect()
-    analyserNode = null
-  }
+  originalGain?.disconnect()
+  masteredGain?.disconnect()
+  originalAnalyser?.disconnect()
+  masteredAnalyser?.disconnect()
+
+  originalGain = null
+  masteredGain = null
+  originalAnalyser = null
+  masteredAnalyser = null
+  originalChain = null
+  masteredChain = null
 
   if (animationFrame) {
     cancelAnimationFrame(animationFrame)
@@ -94,10 +114,17 @@ export function pauseAudio() {
   sourceNode.disconnect()
   sourceNode = null
 
-  if (analyserNode) {
-    analyserNode.disconnect()
-    analyserNode = null
-  }
+  originalGain?.disconnect()
+  masteredGain?.disconnect()
+  originalAnalyser?.disconnect()
+  masteredAnalyser?.disconnect()
+
+  originalGain = null
+  masteredGain = null
+  originalAnalyser = null
+  masteredAnalyser = null
+  originalChain = null
+  masteredChain = null
 
   setPlaying(false)
   cancelAnimationFrame(animationFrame!)
@@ -105,26 +132,28 @@ export function pauseAudio() {
   stopMeterUpdates()
 }
 
-export function switchSource() {
-  if (!state.isPlaying) return
-
+export function switchToOriginal() {
+  if (!originalGain || !masteredGain) return
   const ctx = getAudioContext()
-  const currentOffset = ctx.currentTime - startTime
+  const now = ctx.currentTime
+  originalGain.gain.setValueAtTime(originalGain.gain.value, now)
+  masteredGain.gain.setValueAtTime(masteredGain.gain.value, now)
+  originalGain.gain.linearRampToValueAtTime(1, now + 0.02)
+  masteredGain.gain.linearRampToValueAtTime(0, now + 0.02)
+}
 
-  if (sourceNode) {
-    sourceNode.onended = null
-    sourceNode.stop()
-    sourceNode.disconnect()
-    sourceNode = null
-  }
+export function switchToMastered() {
+  if (!originalGain || !masteredGain) return
+  const ctx = getAudioContext()
+  const now = ctx.currentTime
+  originalGain.gain.setValueAtTime(originalGain.gain.value, now)
+  masteredGain.gain.setValueAtTime(masteredGain.gain.value, now)
+  originalGain.gain.linearRampToValueAtTime(0, now + 0.02)
+  masteredGain.gain.linearRampToValueAtTime(1, now + 0.02)
+}
 
-  if (analyserNode) {
-    analyserNode.disconnect()
-    analyserNode = null
-  }
-
-  // 現在の再生位置を保持したまま切り替え
-  playAudio(currentOffset)
+export function getCurrentAnalyser(): AnalyserNode | null {
+  return state.isMastered ? masteredAnalyser : originalAnalyser
 }
 
 export function getCurrentPlaybackTime(): number {

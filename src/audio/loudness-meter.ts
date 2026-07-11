@@ -1,15 +1,14 @@
-import { getAudioContext } from './decoder'
+import { getCurrentAnalyser } from './playback'
 
-let analyserNode: AnalyserNode | null = null
 let dataArray: Float32Array | null = null
 
-export function setAnalyserNode(node: AnalyserNode) {
-  analyserNode = node
-  dataArray = new Float32Array(node.fftSize)
-}
-
 export function getCurrentLufs(): number {
-  if (!analyserNode || !dataArray) return -Infinity
+  const analyserNode = getCurrentAnalyser()
+  if (!analyserNode) return -Infinity
+
+  if (!dataArray || dataArray.length !== analyserNode.fftSize) {
+    dataArray = new Float32Array(analyserNode.fftSize)
+  }
 
   analyserNode.getFloatTimeDomainData(dataArray)
 
@@ -27,7 +26,12 @@ export function getCurrentLufs(): number {
 }
 
 export function getCurrentRms(): number {
-  if (!analyserNode || !dataArray) return -Infinity
+  const analyserNode = getCurrentAnalyser()
+  if (!analyserNode) return -Infinity
+
+  if (!dataArray || dataArray.length !== analyserNode.fftSize) {
+    dataArray = new Float32Array(analyserNode.fftSize)
+  }
 
   analyserNode.getFloatTimeDomainData(dataArray)
 
@@ -43,7 +47,12 @@ export function getCurrentRms(): number {
 }
 
 export function getCurrentPeak(): number {
-  if (!analyserNode || !dataArray) return -Infinity
+  const analyserNode = getCurrentAnalyser()
+  if (!analyserNode) return -Infinity
+
+  if (!dataArray || dataArray.length !== analyserNode.fftSize) {
+    dataArray = new Float32Array(analyserNode.fftSize)
+  }
 
   analyserNode.getFloatTimeDomainData(dataArray)
 

@@ -1,12 +1,14 @@
 import { state, setMastered, notify } from '../state'
-import { switchSource } from './playback'
+import { switchToOriginal as switchOriginal, switchToMastered as switchMastered } from './playback'
 
 export function switchToOriginal() {
   setMastered(false)
-  switchSource()
+  switchOriginal()
+  notify()
 }
 
 export function switchToMastered() {
   setMastered(true)
-  switchSource()
+  switchMastered()
+  notify()
 }
