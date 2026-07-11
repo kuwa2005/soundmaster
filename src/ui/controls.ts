@@ -20,19 +20,10 @@ const sampleRates: { value: OutputSampleRate; label: string; desc: string; isHiR
   { value: 96000, label: '96kHz', desc: 'ハイレゾ', isHiRes: true },
 ]
 
-const styleDefaults: Record<string, { lowGen: number; highGen: number }> = {
-  warmth: { lowGen: 0.4, highGen: 0.1 },
-  balance: { lowGen: 0.2, highGen: 0.2 },
-  openness: { lowGen: 0.1, highGen: 0.4 },
-}
-
 const SLIDER_MAX = 300
 
 function handleStyleChange(value: typeof state.style) {
   setStyle(value)
-  const defaults = styleDefaults[value]
-  setLowGenAmount(defaults.lowGen)
-  setHighGenAmount(defaults.highGen)
 
   if (state.isPlaying) {
     updateLiveChainParams()
