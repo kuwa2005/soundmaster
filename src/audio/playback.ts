@@ -4,15 +4,17 @@ import { createLiveDSPChain } from './mastering-chain'
 import { startMeterUpdates, stopMeterUpdates } from '../ui/meters'
 
 let sourceNode: AudioBufferSourceNode | null = null
-let currentGainNode: GainNode | null = null
 let analyserNode: AnalyserNode | null = null
 let startTime = 0
 let startOffset = 0
 let animationFrame: number | null = null
 
-export function playAudio() {
+export function playAudio(offset?: number) {
   const track = getActiveTrack()
   if (!track?.originalBuffer) return
+
+  // 引数で指定された場合はそれを使用、そうでなければ現在のstartOffsetを使用
+  const playOffset = offset !== undefined ? offset : startOffset
 
   stopAudio()
 
@@ -37,8 +39,9 @@ export function playAudio() {
     analyserNode.connect(ctx.destination)
   }
 
-  sourceNode.start(0, startOffset)
-  startTime = ctx.currentTime - startOffset
+  sourceNode.start(0, playOffset)
+  startTime = ctx.currentTime - playOffset
+  startOffset = playOffset
 
   setPlaying(true)
   startMeterUpdates()
@@ -120,8 +123,8 @@ export function switchSource() {
     analyserNode = null
   }
 
-  startOffset = currentOffset
-  playAudio()
+  // 現在の再生位置を保持したまま切り替え
+  playAudio(currentOffset)
 }
 
 export function getCurrentPlaybackTime(): number {
