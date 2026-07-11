@@ -5,13 +5,14 @@ import { t } from '../i18n'
 export function renderTrackList(container: HTMLElement) {
   if (state.tracks.length === 0) {
     container.innerHTML = `
-      <div id="track-dropzone-empty" class="p-6 text-center h-full flex flex-col items-center justify-center" style="color: var(--color-daw-muted); border: 2px dashed var(--color-daw-border); border-radius: 8px; margin: 8px;">
+      <div id="track-dropzone-empty" class="p-6 text-center h-full flex flex-col items-center justify-center cursor-pointer" style="color: var(--color-daw-muted); border: 2px dashed var(--color-daw-border); border-radius: 8px; margin: 8px;">
         <span class="text-4xl block mb-3 opacity-30">🎵</span>
         <p class="text-sm">${t('tracks.empty')}</p>
         <p class="text-xs mt-1 opacity-50">${t('tracks.dropHint')}</p>
+        <input type="file" id="sidebar-file-input" multiple accept="audio/*,video/*" class="hidden" />
       </div>
     `
-    initTrackDropzone(container, true)
+    initSidebarDropzone(container, true)
     return
   }
 
@@ -27,8 +28,9 @@ export function renderTrackList(container: HTMLElement) {
       </div>
       <ul id="track-list-items" class="space-y-1 flex-1 overflow-y-auto">
       </ul>
-      <div id="track-dropzone-add" class="mt-3 p-3 text-center text-xs" style="border: 1px dashed var(--color-daw-border); border-radius: 6px; color: var(--color-daw-muted);">
+      <div id="track-dropzone-add" class="mt-3 p-3 text-center text-xs cursor-pointer" style="border: 1px dashed var(--color-daw-border); border-radius: 6px; color: var(--color-daw-muted);">
         ${t('tracks.addHint')}
+        <input type="file" id="sidebar-file-input" multiple accept="audio/*,video/*" class="hidden" />
       </div>
     </div>
   `
@@ -65,16 +67,31 @@ export function renderTrackList(container: HTMLElement) {
     list.appendChild(li)
   }
 
-  initTrackDropzone(container, false)
+  initSidebarDropzone(container, false)
 }
 
-function initTrackDropzone(container: HTMLElement, isEmpty: boolean) {
+function initSidebarDropzone(container: HTMLElement, isEmpty: boolean) {
   const dropzone = isEmpty
     ? document.getElementById('track-dropzone-empty')
     : document.getElementById('track-dropzone-add')
 
-  if (!dropzone) return
+  const fileInput = document.getElementById('sidebar-file-input') as HTMLInputElement
+  if (!dropzone || !fileInput) return
 
+  // クリックでファイル選択
+  dropzone.addEventListener('click', (e) => {
+    if ((e.target as HTMLElement).tagName !== 'INPUT') {
+      fileInput.click()
+    }
+  })
+
+  fileInput.addEventListener('change', (e) => {
+    const files = (e.target as HTMLInputElement).files
+    if (files) handleFileDrop(files)
+    fileInput.value = ''
+  })
+
+  // ドラッグ＆ドロップ
   dropzone.addEventListener('dragover', (e) => {
     e.preventDefault()
     e.stopPropagation()
@@ -94,6 +111,20 @@ function initTrackDropzone(container: HTMLElement, isEmpty: boolean) {
     dropzone.style.background = ''
     handleFileDrop(e.dataTransfer!.files)
   })
+
+  // サイドバー全体にもドロップ対応
+  if (isEmpty) {
+    container.addEventListener('dragover', (e) => {
+      e.preventDefault()
+    })
+
+    container.addEventListener('drop', (e) => {
+      e.preventDefault()
+      if (e.dataTransfer?.files) {
+        handleFileDrop(e.dataTransfer.files)
+      }
+    })
+  }
 }
 
 function getStatusIcon(status: string): string {

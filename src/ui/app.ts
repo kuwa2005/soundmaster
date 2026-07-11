@@ -57,15 +57,11 @@ export function renderApp(container: HTMLElement) {
         </main>
       </div>
 
-      <footer id="dropzone" class="border-t p-4" style="border-color: var(--color-daw-border); background: var(--color-daw-surface);">
-        <div id="dropzone-content" class="dropzone-content border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all" style="border-color: var(--color-daw-border);">
-          <div class="flex flex-col items-center gap-2">
-            <span class="text-3xl opacity-50">📁</span>
-            <p style="color: var(--color-daw-text);">${t('dropzone.label')}</p>
-            <p class="text-sm" style="color: var(--color-daw-muted);">${t('dropzone.formats')}</p>
-          </div>
-          <input type="file" id="file-input" multiple accept="audio/*,video/*" class="hidden" />
-        </div>
+      <footer class="border-t px-6 py-2 flex items-center justify-between text-xs" style="border-color: var(--color-daw-border); background: var(--color-daw-surface); color: var(--color-daw-muted);">
+        <span>© 2026 SoundMaster</span>
+        <a href="https://github.com/kuwa2005/soundmaster" target="_blank" rel="noopener noreferrer" class="hover:underline" style="color: var(--color-daw-accent);">
+          GitHub
+        </a>
       </footer>
     </div>
   `
@@ -91,7 +87,6 @@ function initLangToggle() {
   document.getElementById('lang-toggle')?.addEventListener('click', () => {
     const newLocale: Locale = getLocale() === 'ja' ? 'en' : 'ja'
     setLocale(newLocale)
-    // 全コンポーネントを再描画
     updateAllText()
   })
 }
@@ -99,7 +94,6 @@ function initLangToggle() {
 function updateAllText() {
   if (!appContainer) return
 
-  // ヘッダーのテキスト更新
   const titleEl = appContainer.querySelector('h1')
   const subtitleEl = appContainer.querySelector('.hidden.sm\\:inline')
   const langBtn = document.getElementById('lang-toggle')
@@ -108,13 +102,6 @@ function updateAllText() {
   if (subtitleEl) subtitleEl.textContent = t('app.subtitle')
   if (langBtn) langBtn.textContent = getLocale() === 'ja' ? 'JA' : 'EN'
 
-  // ドロップゾーンのテキスト更新
-  const dropLabel = appContainer.querySelector('#dropzone-content p')
-  const dropFormats = appContainer.querySelector('#dropzone-content .text-sm')
-  if (dropLabel) dropLabel.textContent = t('dropzone.label')
-  if (dropFormats) dropFormats.textContent = t('dropzone.formats')
-
-  // サブコンポーネントを再描画
   renderSubComponents()
   updateThemeIcon()
 }
@@ -137,31 +124,5 @@ function updateThemeIcon() {
 }
 
 function initDropzone() {
-  const dropzone = document.getElementById('dropzone-content')!
-  const fileInput = document.getElementById('file-input') as HTMLInputElement
-
-  dropzone.addEventListener('click', () => fileInput.click())
-
-  dropzone.addEventListener('dragover', (e) => {
-    e.preventDefault()
-    dropzone.classList.add('dropzone-active')
-  })
-
-  dropzone.addEventListener('dragleave', () => {
-    dropzone.classList.remove('dropzone-active')
-  })
-
-  dropzone.addEventListener('drop', (e) => {
-    e.preventDefault()
-    dropzone.classList.remove('dropzone-active')
-    handleFileDrop(e.dataTransfer!.files)
-  })
-
-  fileInput.addEventListener('change', (e) => {
-    const files = (e.target as HTMLInputElement).files
-    if (files) handleFileDrop(files)
-    fileInput.value = ''
-  })
-
   document.getElementById('theme-toggle')!.addEventListener('click', toggleTheme)
 }
