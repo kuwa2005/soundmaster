@@ -18,8 +18,6 @@ const sampleRates: { value: OutputSampleRate; label: string; desc: string; isHiR
   { value: 48000, label: '48kHz', desc: '映像標準', isHiRes: false },
   { value: 88200, label: '88.2kHz', desc: 'ハイレゾ', isHiRes: true },
   { value: 96000, label: '96kHz', desc: 'ハイレゾ', isHiRes: true },
-  { value: 176400, label: '176.4kHz', desc: 'スーパーMD', isHiRes: true },
-  { value: 192000, label: '192kHz', desc: 'スーパーMD', isHiRes: true },
 ]
 
 const styleDefaults: Record<string, { lowGen: number; highGen: number }> = {
