@@ -152,9 +152,14 @@ function createHighGenerator(ctx: OfflineAudioContext | AudioContext, amount: nu
   return { input, output, shaper, shelf }
 }
 
+let renderVersion = 0
+
 export async function rebuildMasteringChain() {
   const track = getActiveTrack()
   if (!track?.originalBuffer) return
+
+  // 新しいレンダリング開始時にカウンターをインクリメント
+  const thisVersion = ++renderVersion
 
   track.status = 'mastering'
   notify()
@@ -163,7 +168,6 @@ export async function rebuildMasteringChain() {
     const buffer = track.originalBuffer
     const targetSampleRate = state.outputSampleRate
 
-    // オーバーサンプリングで高域を補完
     const oversampleRate = targetSampleRate > buffer.sampleRate ? 2 : 1
     const renderSampleRate = buffer.sampleRate * oversampleRate
 
@@ -183,18 +187,25 @@ export async function rebuildMasteringChain() {
 
     let rendered = await offlineCtx.startRendering()
 
-    // ターゲットサンプルレートにダウンサンプルが必要な場合
+    // 古いレンダリング結果は無視
+    if (thisVersion !== renderVersion) return
+
     if (renderSampleRate !== targetSampleRate) {
       rendered = await downsampleBuffer(rendered, targetSampleRate)
     }
+
+    // ダウンサンプル後にもう一度チェック
+    if (thisVersion !== renderVersion) return
 
     track.masteredBuffer = rendered
     track.status = 'done'
     notify()
   } catch (e) {
     console.error('Mastering failed:', e)
-    track.status = 'error'
-    notify()
+    if (thisVersion === renderVersion) {
+      track.status = 'error'
+      notify()
+    }
   }
 }
 

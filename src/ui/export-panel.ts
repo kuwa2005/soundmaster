@@ -169,11 +169,16 @@ function checkRenderingStatus() {
 
   const track = getActiveTrack()
   const hasBuffer = track?.masteredBuffer !== null && track?.masteredBuffer !== undefined
+  const isDone = track?.status === 'done'
 
-  if (hasBuffer && pendingDownload) {
+  // バッファが存在し、かつレンダリングが完了している場合のみダウンロード
+  if (hasBuffer && isDone && pendingDownload) {
     const type = pendingDownload
     hideRenderingDialog()
     executeDownload(type)
+  } else if (!dialogElement) {
+    // ダイアログが閉じられた場合は終了
+    return
   } else {
     setTimeout(checkRenderingStatus, 100)
   }
