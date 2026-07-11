@@ -1,4 +1,5 @@
-import { addTrack, Track, notify } from '../state'
+import { addTrack, Track, notify, getActiveTrack } from '../state'
+import { rebuildMasteringChain } from './mastering-chain'
 
 let audioContext: AudioContext | null = null
 
@@ -39,6 +40,9 @@ export async function handleFileDrop(files: FileList) {
       track.originalBuffer = buffer
       track.status = 'ready'
       notify()
+
+      // ファイル読み込み後に自動でマスタリング実行
+      await rebuildMasteringChain()
     } catch (e) {
       console.error('Failed to decode:', file.name, e)
       track.status = 'error'
