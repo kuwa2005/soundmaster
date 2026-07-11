@@ -170,3 +170,15 @@ body {
 #waveform {
   min-height: 150px;
 }
+
+/* Track dropzone hover */
+#track-dropzone-empty,
+#track-dropzone-add {
+  transition: all 0.2s ease;
+}
+
+#track-dropzone-empty:hover,
+#track-dropzone-add:hover {
+  border-color: var(--color-daw-muted);
+  background: rgba(124, 58, 237, 0.02);
+}

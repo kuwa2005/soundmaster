@@ -56,25 +56,25 @@ function writeString(view: DataView, offset: number, str: string) {
 
 // テスト用のAudioBufferを作成
 function createTestBuffer(channels: number, length: number, sampleRate: number = 44100): AudioBuffer {
-  const buffer = {
-    numberOfChannels: channels,
-    length: length,
-    sampleRate: sampleRate,
-    duration: length / sampleRate,
-    channelData: [] as Float32Array[],
-    getChannelData: function(channel: number): Float32Array {
-      return this.channelData[channel]
-    },
-  } as unknown as AudioBuffer
-
+  const channelData: Float32Array[] = []
   for (let ch = 0; ch < channels; ch++) {
     const data = new Float32Array(length)
     // 440Hz sine wave
     for (let i = 0; i < length; i++) {
       data[i] = 0.5 * Math.sin(2 * Math.PI * 440 * i / sampleRate)
     }
-    buffer.channelData.push(data)
+    channelData.push(data)
   }
+
+  const buffer = {
+    numberOfChannels: channels,
+    length: length,
+    sampleRate: sampleRate,
+    duration: length / sampleRate,
+    getChannelData: function(channel: number): Float32Array {
+      return channelData[channel]
+    },
+  } as unknown as AudioBuffer
 
   return buffer
 }

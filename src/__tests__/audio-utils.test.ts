@@ -28,20 +28,20 @@ function getRms(buffer: AudioBuffer): number {
 
 // テスト用のAudioBufferを作成するヘルパー
 function createTestBuffer(channels: number, length: number, sampleRate: number = 44100): AudioBuffer {
+  const channelData: Float32Array[] = []
+  for (let ch = 0; ch < channels; ch++) {
+    channelData.push(new Float32Array(length))
+  }
+
   const buffer = {
     numberOfChannels: channels,
     length: length,
     sampleRate: sampleRate,
     duration: length / sampleRate,
-    channelData: [] as Float32Array[],
     getChannelData: function(channel: number): Float32Array {
-      return this.channelData[channel]
+      return channelData[channel]
     },
   } as unknown as AudioBuffer
-
-  for (let ch = 0; ch < channels; ch++) {
-    buffer.channelData.push(new Float32Array(length))
-  }
 
   return buffer
 }
