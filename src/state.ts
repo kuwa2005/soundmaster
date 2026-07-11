@@ -32,7 +32,7 @@ export const state: AppState = {
   style: 'warmth',
   loudness: 'medium',
   isPlaying: false,
-  isMastered: false,
+  isMastered: true,
   currentTime: 0,
   theme: 'light',
   lowGenAmount: 0.4,
