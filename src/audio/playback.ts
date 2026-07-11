@@ -2,6 +2,7 @@ import { state, getActiveTrack, setPlaying, setCurrentTime, notify } from '../st
 import { getAudioContext } from './decoder'
 import { createLiveDSPChain } from './mastering-chain'
 import { startMeterUpdates, stopMeterUpdates } from '../ui/meters'
+import { updateWaveformProgress } from '../ui/waveform'
 
 let sourceNode: AudioBufferSourceNode | null = null
 let originalGain: GainNode | null = null
@@ -171,6 +172,13 @@ function updateTimeDisplay() {
   const seconds = Math.floor(time % 60)
   const ms = Math.floor((time % 1) * 1000)
   display.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(ms).padStart(3, '0')}`
+
+  // 波形の進行ゲージを更新
+  const track = getActiveTrack()
+  if (track?.originalBuffer) {
+    const progress = time / track.originalBuffer.duration
+    updateWaveformProgress(Math.min(1, Math.max(0, progress)))
+  }
 
   if (state.isPlaying) {
     animationFrame = requestAnimationFrame(updateTimeDisplay)

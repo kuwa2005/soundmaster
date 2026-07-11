@@ -2,6 +2,9 @@ import { state, getActiveTrack } from '../state'
 
 let canvas: HTMLCanvasElement | null = null
 let animationFrame: number | null = null
+let waveformData: Float32Array | null = null
+let canvasWidth = 0
+let canvasHeight = 0
 
 export function renderWaveform(container: HTMLElement) {
   const track = getActiveTrack()
@@ -25,49 +28,35 @@ export function renderWaveform(container: HTMLElement) {
   `
 
   canvas = document.getElementById('waveform-canvas') as HTMLCanvasElement
-  drawWaveform(canvas, track.originalBuffer)
+  cacheWaveformData(track.originalBuffer)
+  drawWaveform()
 
-  // ウィンドウリサイズ時に再描画
   const resizeObserver = new ResizeObserver(() => {
     if (canvas && track.originalBuffer) {
-      drawWaveform(canvas, track.originalBuffer)
+      cacheWaveformData(track.originalBuffer)
+      drawWaveform()
     }
   })
   resizeObserver.observe(container)
 }
 
-function drawWaveform(canvas: HTMLCanvasElement, buffer: AudioBuffer) {
-  const ctx = canvas.getContext('2d')!
+function cacheWaveformData(buffer: AudioBuffer) {
+  if (!canvas) return
+
   const rect = canvas.getBoundingClientRect()
   const dpr = window.devicePixelRatio || 1
 
   canvas.width = rect.width * dpr
   canvas.height = rect.height * dpr
-  ctx.scale(dpr, dpr)
+  canvasWidth = rect.width
+  canvasHeight = rect.height
 
-  const width = rect.width
-  const height = rect.height
-  const centerY = height / 2
-
-  // 背景をクリア
-  ctx.fillStyle = state.theme === 'dark' ? '#1e1e2e' : '#f8fafc'
-  ctx.fillRect(0, 0, width, height)
-
-  // 中心線
-  ctx.strokeStyle = state.theme === 'dark' ? '#3d3d5c' : '#e2e8f0'
-  ctx.lineWidth = 1
-  ctx.beginPath()
-  ctx.moveTo(0, centerY)
-  ctx.lineTo(width, centerY)
-  ctx.stroke()
-
-  // 波形データを間引いて描画
   const data = buffer.getChannelData(0)
-  const step = Math.ceil(data.length / width)
-  const amp = height / 2
+  const width = canvasWidth
 
-  ctx.fillStyle = state.theme === 'dark' ? '#7c3aed' : '#6d28d9'
-  ctx.beginPath()
+  // Min/Maxペアをキャッシュ（間引き済み）
+  waveformData = new Float32Array(width * 2)
+  const step = Math.ceil(data.length / width)
 
   for (let i = 0; i < width; i++) {
     const start = Math.floor(i * data.length / width)
@@ -82,28 +71,74 @@ function drawWaveform(canvas: HTMLCanvasElement, buffer: AudioBuffer) {
       if (val > max) max = val
     }
 
+    waveformData[i * 2] = min
+    waveformData[i * 2 + 1] = max
+  }
+}
+
+function drawWaveform(progressX?: number) {
+  if (!canvas || !waveformData) return
+
+  const ctx = canvas.getContext('2d')!
+  const dpr = window.devicePixelRatio || 1
+  const width = canvasWidth
+  const height = canvasHeight
+  const centerY = height / 2
+  const amp = height / 2
+
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+
+  // 背景
+  ctx.fillStyle = state.theme === 'dark' ? '#1e1e2e' : '#f8fafc'
+  ctx.fillRect(0, 0, width, height)
+
+  // 中心線
+  ctx.strokeStyle = state.theme === 'dark' ? '#3d3d5c' : '#e2e8f0'
+  ctx.lineWidth = 1
+  ctx.beginPath()
+  ctx.moveTo(0, centerY)
+  ctx.lineTo(width, centerY)
+  ctx.stroke()
+
+  // 波形描画
+  const waveformColor = state.theme === 'dark' ? '#7c3aed' : '#6d28d9'
+  ctx.fillStyle = waveformColor
+
+  for (let i = 0; i < width; i++) {
+    const min = waveformData[i * 2]
+    const max = waveformData[i * 2 + 1]
     const yMin = (1 + min) * amp
     const yMax = (1 + max) * amp
 
     ctx.fillRect(i, yMax, 1, yMin - yMax || 1)
   }
 
-  ctx.fill()
+  // 進行ゲージ（垂直線）
+  if (progressX !== undefined && progressX >= 0) {
+    // ゲージの背景ハイライト
+    ctx.fillStyle = state.theme === 'dark' ? 'rgba(124, 58, 237, 0.15)' : 'rgba(109, 40, 217, 0.1)'
+    ctx.fillRect(0, 0, progressX, height)
+
+    // 垂直ライン
+    ctx.strokeStyle = state.theme === 'dark' ? '#ef4444' : '#dc2626'
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.moveTo(progressX, 0)
+    ctx.lineTo(progressX, height)
+    ctx.stroke()
+
+    // ゲージ先端のドット
+    ctx.fillStyle = state.theme === 'dark' ? '#ef4444' : '#dc2626'
+    ctx.beginPath()
+    ctx.arc(progressX, centerY, 4, 0, Math.PI * 2)
+    ctx.fill()
+  }
 }
 
 export function updateWaveformProgress(progress: number) {
-  if (!canvas) return
-
-  const rect = canvas.getBoundingClientRect()
-  const width = rect.width
-
-  // 再生位置に合わせてプログレスを再描画
-  drawWaveform(canvas, getActiveTrack()!.originalBuffer!)
-
-  // プログレスオーバーレイ
-  const ctx = canvas.getContext('2d')!
-  ctx.fillStyle = state.theme === 'dark' ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.2)'
-  ctx.fillRect(0, 0, width * progress, canvas.height / (window.devicePixelRatio || 1))
+  if (!canvas || !waveformData) return
+  const x = canvasWidth * progress
+  drawWaveform(x)
 }
 
 export function clearWaveform() {
@@ -112,4 +147,5 @@ export function clearWaveform() {
     animationFrame = null
   }
   canvas = null
+  waveformData = null
 }
