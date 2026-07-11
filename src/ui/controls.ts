@@ -19,7 +19,7 @@ const styleDefaults: Record<string, { lowGen: number; highGen: number }> = {
   openness: { lowGen: 0.1, highGen: 0.4 },
 }
 
-const SLIDER_MAX = 150
+const SLIDER_MAX = 300
 
 function handleStyleChange(value: typeof state.style) {
   setStyle(value)
@@ -123,7 +123,7 @@ export function renderControls(container: HTMLElement) {
         <div class="flex justify-between text-xs mt-1" style="color: var(--color-daw-muted);">
           <span>OFF</span>
           <span>低音のハーモニック追加</span>
-          <span>150%</span>
+          <span>300%</span>
         </div>
       </div>
 
@@ -140,7 +140,7 @@ export function renderControls(container: HTMLElement) {
         <div class="flex justify-between text-xs mt-1" style="color: var(--color-daw-muted);">
           <span>OFF</span>
           <span>高音のハーモニック追加</span>
-          <span>150%</span>
+          <span>300%</span>
         </div>
       </div>
     </div>
