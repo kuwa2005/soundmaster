@@ -1,4 +1,4 @@
-import { state, setOutputSampleRate, OutputSampleRate } from '../state'
+import { state, setOutputSampleRate, OutputSampleRate, notify } from '../state'
 import { rebuildMasteringChain, updateLiveChainParams } from '../audio/mastering-chain'
 import { t } from '../i18n'
 
@@ -26,6 +26,8 @@ const SLIDER_MAX = 300
 
 function handleStyleChange(value: typeof state.style) {
   state.style = value
+  state.settingsVersion++
+  notify()
 
   if (state.isPlaying) {
     updateLiveChainParams()
@@ -37,6 +39,8 @@ function handleStyleChange(value: typeof state.style) {
 
 function handleLoudnessChange(value: typeof state.loudness) {
   state.loudness = value
+  state.settingsVersion++
+  notify()
 
   if (state.isPlaying) {
     updateLiveChainParams()
@@ -81,6 +85,7 @@ function handleGenChange(type: 'low' | 'high', value: number) {
     state.highGenAmount = value
   }
   state.settingsVersion++
+  notify()
 
   if (state.isPlaying) {
     updateLiveChainParams()
@@ -92,6 +97,7 @@ function handleGenChange(type: 'low' | 'high', value: number) {
 function handleSampleRateChange(value: OutputSampleRate) {
   setOutputSampleRate(value)
   state.settingsVersion++
+  notify()
   rebuildMasteringChain()
 }
 
