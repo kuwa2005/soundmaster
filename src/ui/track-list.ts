@@ -112,19 +112,28 @@ function initSidebarDropzone(container: HTMLElement, isEmpty: boolean) {
     handleFileDrop(e.dataTransfer!.files)
   })
 
-  // サイドバー全体にもドロップ対応
-  if (isEmpty) {
-    container.addEventListener('dragover', (e) => {
-      e.preventDefault()
-    })
+  // サイドバー全体にもドロップ対応（トラックがある場合も含む）
+  container.addEventListener('dragover', (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    container.style.background = 'rgba(124, 58, 237, 0.05)'
+  })
 
-    container.addEventListener('drop', (e) => {
-      e.preventDefault()
-      if (e.dataTransfer?.files) {
-        handleFileDrop(e.dataTransfer.files)
-      }
-    })
-  }
+  container.addEventListener('dragleave', (e) => {
+    // サイドバーから離れた場合のみリセット
+    if (!container.contains(e.relatedTarget as Node)) {
+      container.style.background = ''
+    }
+  })
+
+  container.addEventListener('drop', (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    container.style.background = ''
+    if (e.dataTransfer?.files) {
+      handleFileDrop(e.dataTransfer.files)
+    }
+  })
 }
 
 function getStatusIcon(status: string): string {
