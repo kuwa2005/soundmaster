@@ -1,4 +1,4 @@
-import { state, setStyle, setLoudness, setLowGenAmount, setHighGenAmount, setOutputSampleRate, OutputSampleRate } from '../state'
+import { state, setOutputSampleRate, OutputSampleRate } from '../state'
 import { rebuildMasteringChain, updateLiveChainParams } from '../audio/mastering-chain'
 
 const styles = [
@@ -22,10 +22,12 @@ const sampleRates: { value: OutputSampleRate; label: string; desc: string; isHiR
 
 const SLIDER_MAX = 300
 
+// 再生中のパラメータ更新（notifyを呼ばない）
 function handleStyleChange(value: typeof state.style) {
-  setStyle(value)
+  state.style = value
 
   if (state.isPlaying) {
+    // 再生中はオーディオチェーンだけ更新
     updateLiveChainParams()
   } else {
     rebuildMasteringChain()
@@ -33,7 +35,7 @@ function handleStyleChange(value: typeof state.style) {
 }
 
 function handleLoudnessChange(value: typeof state.loudness) {
-  setLoudness(value)
+  state.loudness = value
 
   if (state.isPlaying) {
     updateLiveChainParams()
@@ -44,9 +46,9 @@ function handleLoudnessChange(value: typeof state.loudness) {
 
 function handleGenChange(type: 'low' | 'high', value: number) {
   if (type === 'low') {
-    setLowGenAmount(value)
+    state.lowGenAmount = value
   } else {
-    setHighGenAmount(value)
+    state.highGenAmount = value
   }
 
   if (state.isPlaying) {

@@ -1,4 +1,4 @@
-import { state, getActiveTrack, setPlaying, setCurrentTime, notify } from '../state'
+import { state, getActiveTrack, setPlaying, setCurrentTime } from '../state'
 import { getAudioContext } from './decoder'
 import { createLiveDSPChain, clearLiveChainNodes } from './mastering-chain'
 import { startMeterUpdates, stopMeterUpdates } from '../ui/meters'
@@ -9,7 +9,6 @@ let originalGain: GainNode | null = null
 let masteredGain: GainNode | null = null
 let originalAnalyser: AnalyserNode | null = null
 let masteredAnalyser: AnalyserNode | null = null
-let originalChain: { input: AudioNode; output: AudioNode } | null = null
 let masteredChain: { input: AudioNode; output: AudioNode } | null = null
 let startTime = 0
 let startOffset = 0
@@ -57,13 +56,14 @@ export function playAudio(offset?: number) {
   startTime = ctx.currentTime - playOffset
   startOffset = playOffset
 
-  setPlaying(true)
+  // isPlayingを直接設定（notifyを呼ばない）
+  state.isPlaying = true
   startMeterUpdates()
   updateTimeDisplay()
 
   sourceNode.onended = () => {
     if (state.isPlaying) {
-      setPlaying(false)
+      state.isPlaying = false
       startOffset = 0
       stopMeterUpdates()
       cancelAnimationFrame(animationFrame!)
@@ -89,7 +89,6 @@ export function stopAudio() {
   masteredGain = null
   originalAnalyser = null
   masteredAnalyser = null
-  originalChain = null
   masteredChain = null
 
   clearLiveChainNodes()
@@ -100,8 +99,8 @@ export function stopAudio() {
   }
 
   startOffset = 0
-  setPlaying(false)
-  setCurrentTime(0)
+  state.isPlaying = false
+  state.currentTime = 0
   stopMeterUpdates()
   updateTimeDisplay()
 }
@@ -126,10 +125,9 @@ export function pauseAudio() {
   masteredGain = null
   originalAnalyser = null
   masteredAnalyser = null
-  originalChain = null
   masteredChain = null
 
-  setPlaying(false)
+  state.isPlaying = false
   cancelAnimationFrame(animationFrame!)
   animationFrame = null
   stopMeterUpdates()
@@ -155,16 +153,6 @@ export function switchToMastered() {
   masteredGain.gain.linearRampToValueAtTime(1, now + 0.02)
 }
 
-export function getCurrentAnalyser(): AnalyserNode | null {
-  return state.isMastered ? masteredAnalyser : originalAnalyser
-}
-
-export function getCurrentPlaybackTime(): number {
-  if (!state.isPlaying || !sourceNode) return startOffset
-  const ctx = getAudioContext()
-  return ctx.currentTime - startTime
-}
-
 export function seekTo(progress: number) {
   const track = getActiveTrack()
   if (!track?.originalBuffer) return
@@ -173,13 +161,21 @@ export function seekTo(progress: number) {
   startOffset = seekTime
 
   if (state.isPlaying) {
-    // 再生中は即座に新しい位置から再生
     playAudio(seekTime)
   } else {
-    // 停止中はオフセットだけ更新して波形を再描画
     updateWaveformProgress(progress)
     updateTimeDisplay()
   }
+}
+
+export function getCurrentAnalyser(): AnalyserNode | null {
+  return state.isMastered ? masteredAnalyser : originalAnalyser
+}
+
+export function getCurrentPlaybackTime(): number {
+  if (!state.isPlaying || !sourceNode) return startOffset
+  const ctx = getAudioContext()
+  return ctx.currentTime - startTime
 }
 
 function updateTimeDisplay() {
@@ -192,7 +188,6 @@ function updateTimeDisplay() {
   const ms = Math.floor((time % 1) * 1000)
   display.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(ms).padStart(3, '0')}`
 
-  // 波形の進行ゲージを更新
   const track = getActiveTrack()
   if (track?.originalBuffer) {
     const progress = time / track.originalBuffer.duration

@@ -66,7 +66,15 @@ export function renderApp(container: HTMLElement) {
   updateThemeIcon()
 
   subscribe(() => {
-    renderSubComponents()
+    // 再生中はコントロール以外を更新（オーディオチェーンを壊さないため）
+    if (!state.isPlaying) {
+      renderSubComponents()
+    } else {
+      // 再生中は最小限の更新のみ
+      renderTrackList(document.getElementById('track-list')!)
+      renderTransport(document.getElementById('transport-area')!)
+      renderExportPanel(document.getElementById('export-area')!)
+    }
     updateThemeIcon()
   })
 }
