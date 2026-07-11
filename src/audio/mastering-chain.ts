@@ -26,32 +26,32 @@ interface LoudnessParams {
 
 const styleParams: Record<string, StyleParams> = {
   warmth: {
-    eqLowFreq: 200, eqLowGain: 4,
-    eqMidFreq: 800, eqMidGain: -1, eqMidQ: 0.7,
-    eqHighFreq: 4000, eqHighGain: -2,
-    compThreshold: -18, compRatio: 2, compAttack: 0.015, compRelease: 0.2, compKnee: 12,
-    stereoWidth: 0.8, limiterRelease: 0.15,
+    eqLowFreq: 150, eqLowGain: 8,
+    eqMidFreq: 600, eqMidGain: -3, eqMidQ: 0.8,
+    eqHighFreq: 3000, eqHighGain: -5,
+    compThreshold: -20, compRatio: 3, compAttack: 0.02, compRelease: 0.25, compKnee: 12,
+    stereoWidth: 0.7, limiterRelease: 0.2,
   },
   balance: {
-    eqLowFreq: 150, eqLowGain: 2,
+    eqLowFreq: 100, eqLowGain: 3,
     eqMidFreq: 1000, eqMidGain: 0, eqMidQ: 1,
-    eqHighFreq: 6000, eqHighGain: 0,
-    compThreshold: -16, compRatio: 3, compAttack: 0.01, compRelease: 0.15, compKnee: 8,
+    eqHighFreq: 8000, eqHighGain: 3,
+    compThreshold: -18, compRatio: 4, compAttack: 0.01, compRelease: 0.15, compKnee: 6,
     stereoWidth: 1.0, limiterRelease: 0.1,
   },
   openness: {
-    eqLowFreq: 100, eqLowGain: -1,
-    eqMidFreq: 2500, eqMidGain: 2, eqMidQ: 1.2,
-    eqHighFreq: 8000, eqHighGain: 3,
-    compThreshold: -14, compRatio: 4, compAttack: 0.005, compRelease: 0.1, compKnee: 6,
-    stereoWidth: 1.2, limiterRelease: 0.08,
+    eqLowFreq: 80, eqLowGain: -4,
+    eqMidFreq: 3000, eqMidGain: 4, eqMidQ: 1.5,
+    eqHighFreq: 10000, eqHighGain: 6,
+    compThreshold: -15, compRatio: 5, compAttack: 0.003, compRelease: 0.08, compKnee: 4,
+    stereoWidth: 1.4, limiterRelease: 0.06,
   },
 }
 
 const loudnessParams: Record<string, LoudnessParams> = {
-  low: { targetLufs: -16, limiterThreshold: -3, outputGain: -2 },
-  medium: { targetLufs: -14, limiterThreshold: -1.5, outputGain: 0 },
-  high: { targetLufs: -12, limiterThreshold: -0.3, outputGain: 2 },
+  low: { targetLufs: -18, limiterThreshold: -6, outputGain: -4 },
+  medium: { targetLufs: -14, limiterThreshold: -3, outputGain: 0 },
+  high: { targetLufs: -10, limiterThreshold: -1, outputGain: 4 },
 }
 
 export async function rebuildMasteringChain() {
